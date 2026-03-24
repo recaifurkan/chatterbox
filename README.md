@@ -1,6 +1,6 @@
 # Chatterbox
 
-A production-ready, full-stack real-time chat application built with Node.js, Socket.IO, Redis, React, and Tailwind CSS. Supports horizontal scaling via Redis Adapter for multi-server Socket.IO clusters.
+A full-stack real-time chat application built with Node.js, Socket.IO, Redis, React, and Tailwind CSS. Supports horizontal scaling via Redis Adapter for multi-server Socket.IO clusters.
 
 ---
 
