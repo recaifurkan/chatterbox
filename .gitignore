@@ -1,0 +1,45 @@
+# ─── Dependencies ────────────────────────────────────────────────────────────
+node_modules/
+
+# ─── Build outputs ───────────────────────────────────────────────────────────
+dist/
+build/
+
+# ─── Environment / Secrets ───────────────────────────────────────────────────
+# .env.example files ARE committed (they contain no secrets).
+# All actual .env files are ignored.
+.env
+.env.local
+.env.production
+.env.development
+.env.staging
+.env.*.local
+backend/.env
+frontend/.env
+
+# ─── IDE / Editor ────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Uploads (local dev only, stored in MinIO in production) ─────────────────
+uploads/
+
+# ─── Test coverage ───────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ─── OS ──────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Docker local config dir (created by start.sh) ───────────────────────────
+.docker-chat/

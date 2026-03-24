@@ -1,0 +1,217 @@
+# ─── Chatterbox — Docker Compose ──────────────────────────────────────────────
+#
+# Copy .env.example → .env and fill in your own values before running.
+# Then: docker compose up -d   (or: ./start.sh)
+#
+# All secrets are read from the .env file next to this file.
+# Never commit .env — it is listed in .gitignore.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ─── Ortak backend ortam değişkenleri (YAML anchor) ──────────────────────────
+x-backend-env: &backend-env
+  NODE_ENV: production
+  PORT: 5000
+  MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_DB}?authSource=admin
+  REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+  JWT_SECRET: ${JWT_SECRET}
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+  JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+  JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+  CLIENT_URL: ${CLIENT_URL:-http://localhost}
+  MINIO_ENDPOINT: minio
+  MINIO_PORT: "9000"
+  MINIO_USE_SSL: "false"
+  MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+  MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+  MINIO_BUCKET: ${MINIO_BUCKET:-chatterbox-uploads}
+  MAX_FILE_SIZE: ${MAX_FILE_SIZE:-26214400}
+  RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
+  RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+x-backend-base: &backend-base
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  depends_on:
+    mongodb:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    minio-init:
+      condition: service_completed_successfully
+  networks:
+    - chatterbox_network
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 30s
+
+services:
+  # ── MongoDB ────────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7.0
+    container_name: chatterbox_mongodb
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-chatterboxdb}
+    volumes:
+      - chatterbox_mongodb_data:/data/db
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - chatterbox_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: chatterbox_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfsync everysec
+    volumes:
+      - chatterbox_redis_data:/data
+    networks:
+      - chatterbox_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── MinIO (S3-uyumlu dosya depolama) ──────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: chatterbox_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"   # S3 API
+      - "${MINIO_CONSOLE_PORT:-9001}:9001" # Web Console
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - chatterbox_minio_data:/data
+    networks:
+      - chatterbox_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ── MinIO Init: bucket oluştur ─────────────────────────────────────────────
+  minio-init:
+    image: minio/mc:latest
+    container_name: chatterbox_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: on-failure
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-chatterbox-uploads}
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY &&
+        mc mb local/$$MINIO_BUCKET --ignore-existing &&
+        mc anonymous set none local/$$MINIO_BUCKET &&
+        echo '✅ MinIO: '$$MINIO_BUCKET' bucket hazır (private — backend proxy üzerinden erişim)'
+      "
+    networks:
+      - chatterbox_network
+
+  # ── Backend Node 1 ─────────────────────────────────────────────────────────
+  backend:
+    <<: *backend-base
+    container_name: chatterbox_backend_1
+    environment:
+      <<: *backend-env
+      INSTANCE_ID: backend_1
+
+  # ── Backend Node 2 ─────────────────────────────────────────────────────────
+  backend2:
+    <<: *backend-base
+    container_name: chatterbox_backend_2
+    environment:
+      <<: *backend-env
+      INSTANCE_ID: backend_2
+
+  # ── Frontend Node 1 ────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: chatterbox_frontend_1
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+      backend2:
+        condition: service_healthy
+    networks:
+      - chatterbox_network
+
+  # ── Frontend Node 2 ────────────────────────────────────────────────────────
+  frontend2:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: chatterbox_frontend_2
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+      backend2:
+        condition: service_healthy
+    networks:
+      - chatterbox_network
+
+  # ── Nginx: Load Balancer + Reverse Proxy ───────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: chatterbox_nginx
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-80}:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - backend2
+      - frontend
+      - frontend2
+    networks:
+      - chatterbox_network
+
+volumes:
+  chatterbox_mongodb_data:
+    driver: local
+  chatterbox_redis_data:
+    driver: local
+  chatterbox_minio_data:
+    driver: local
+
+networks:
+  chatterbox_network:
