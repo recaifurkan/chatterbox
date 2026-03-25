@@ -10,10 +10,18 @@ export const useNotificationStore = create((set) => ({
   },
 
   addNotification: (notification) => {
-    set((state) => ({
-      notifications: [notification, ...state.notifications],
-      unreadCount: state.unreadCount + 1,
-    }));
+    set((state) => {
+      // Duplicate kontrolü — aynı bildirim socket + API race'den gelebilir
+      if (state.notifications.some((n) => n._id === notification._id)) {
+        console.log('[NotifStore] Duplicate, skipped:', notification._id);
+        return state;
+      }
+      console.log('[NotifStore] Adding notification:', notification._id, notification.title, '| new count:', state.unreadCount + 1);
+      return {
+        notifications: [notification, ...state.notifications],
+        unreadCount: state.unreadCount + 1,
+      };
+    });
   },
 
   markRead: (id) => {

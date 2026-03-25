@@ -11,10 +11,13 @@ const uploadRoutes = require('./routes/upload.routes');
 const searchRoutes = require('./routes/search.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const scheduledRoutes = require('./routes/scheduled.routes');
-const { serveFile } = require('./controllers/upload.controller');
+const createUploadController = require('./controllers/upload.controller');
+const { uploadService } = require('./container');
 const { errorHandler } = require('./middlewares/errorHandler.middleware');
 const { generalLimiter } = require('./middlewares/rateLimiter.middleware');
 const logger = require('./utils/logger');
+
+const { serveFile } = createUploadController(uploadService);
 
 const app = express();
 

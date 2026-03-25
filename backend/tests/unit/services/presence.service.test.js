@@ -3,11 +3,7 @@
  */
 const { setTestEnv } = require('../../helpers/setup');
 
-// Variable MUST be prefixed 'mock' for Jest's mock factory scoping rules
 let mockRedisClient;
-jest.mock('../../../src/config/redis', () => ({
-  getRedisClient: () => mockRedisClient,
-}));
 
 beforeAll(() => {
   setTestEnv();
@@ -19,16 +15,17 @@ beforeEach(async () => {
   await mockRedisClient.flushall();
 });
 
-const {
-  setUserOnline,
-  setUserOffline,
-  setUserStatus,
-  getUserPresence,
-  getUsersPresence,
-  setTyping,
-  clearTyping,
-  getTypingUsers,
-} = require('../../../src/services/presence.service');
+const PresenceService = require('../../../src/services/presence.service');
+const presenceService = new PresenceService({ getRedisClient: () => mockRedisClient });
+
+const setUserOnline = presenceService.setUserOnline.bind(presenceService);
+const setUserOffline = presenceService.setUserOffline.bind(presenceService);
+const setUserStatus = presenceService.setUserStatus.bind(presenceService);
+const getUserPresence = presenceService.getUserPresence.bind(presenceService);
+const getUsersPresence = presenceService.getUsersPresence.bind(presenceService);
+const setTyping = presenceService.setTyping.bind(presenceService);
+const clearTyping = presenceService.clearTyping.bind(presenceService);
+const getTypingUsers = presenceService.getTypingUsers.bind(presenceService);
 
 describe('presence.service', () => {
   describe('setUserOnline', () => {

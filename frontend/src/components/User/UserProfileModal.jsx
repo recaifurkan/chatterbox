@@ -28,7 +28,7 @@ export function UserProfileModalInner({ onClose, userId: propUserId, isSelf: pro
   const { user: currentUser, updateUser } = useAuthStore();
   const { emit } = useSocketStore();
   const { setSidebarTab } = useUIStore();
-  const { addOrUpdateRoom, setActiveRoom, activeRoomId } = useChatStore();
+  const { addOrUpdateRoom, setActiveRoom, activeRoomId, userPresence } = useChatStore();
 
   // Use prop values or defaults
   const userId = propUserId || currentUser?._id;
@@ -166,7 +166,7 @@ export function UserProfileModalInner({ onClose, userId: propUserId, isSelf: pro
               </div>
             )}
             {!editing && (
-              <StatusBadge status={profile?.status || 'offline'} className="absolute bottom-1 right-1 !w-4 !h-4 border-[3px]" />
+              <StatusBadge status={userPresence[userId]?.status || profile?.status || 'offline'} className="absolute bottom-1 right-1 !w-4 !h-4 border-[3px]" />
             )}
           </div>
           <button onClick={onClose} className="mb-2 text-gray-400 hover:text-white transition-colors">

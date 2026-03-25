@@ -1,9 +1,12 @@
 const router = require('express').Router();
+const createRoomController = require('../controllers/room.controller');
+const { roomService } = require('../container');
+const { authenticate } = require('../middlewares/auth.middleware');
+
 const {
   getRooms, getMyRooms, getRoom, createRoom, joinRoom,
   leaveRoom, updateRoom, deleteRoom, promoteUser, getRoomMembers, addMember, createOrGetDM,
-} = require('../controllers/room.controller');
-const { authenticate } = require('../middlewares/auth.middleware');
+} = createRoomController(roomService);
 
 router.use(authenticate);
 

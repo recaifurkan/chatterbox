@@ -1,11 +1,12 @@
 const Message = require('../../models/Message');
 const Room = require('../../models/Room');
 const User = require('../../models/User');
-const { SOCKET_EVENTS, MESSAGE_TYPES, ROOM_TYPES, ROOM_ROLES } = require('../../utils/constants');
-const { createMentionNotifications } = require('../../services/notification.service');
+const { SOCKET_EVENTS, MESSAGE_TYPES, ROOM_TYPES } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
 function registerChatHandlers(io, socket) {
+  const { notificationService, messageService } = require('../../container');
+
   // Join a room
   socket.on(SOCKET_EVENTS.JOIN_ROOM, async ({ roomId }) => {
     try {
@@ -19,7 +20,6 @@ function registerChatHandlers(io, socket) {
       socket.join(`room:${roomId}`);
       socket.emit(SOCKET_EVENTS.ROOM_JOINED, { roomId });
 
-      // Notify others
       socket.to(`room:${roomId}`).emit(SOCKET_EVENTS.USER_JOINED_ROOM, {
         roomId,
         user: { _id: socket.user._id, username: socket.user.username, avatarUrl: socket.user.avatarUrl },
@@ -99,9 +99,45 @@ function registerChatHandlers(io, socket) {
       // Broadcast to room
       io.to(`room:${roomId}`).emit(SOCKET_EVENTS.NEW_MESSAGE, { message });
 
-      // Handle mentions notifications
+      // Handle mentions notifications — artık io parametresi gerekmiyor
       if (mentions.length) {
-        await createMentionNotifications(message, room);
+        try {
+          await notificationService.createMentionNotifications(message, room);
+        } catch (mentionErr) {
+          logger.error('Mention notification error:', mentionErr);
+        }
+      }
+
+      // Oda mesajları için bildirim oluştur
+      try {
+        if (room.type !== ROOM_TYPES.DM) {
+          const mentionSet = new Set(mentions.map((m) => m.toString()));
+          const socketRoom = io.sockets.adapter.rooms.get(`room:${roomId}`);
+
+          for (const member of room.members) {
+            const memberId = (member.user?._id || member.user).toString();
+            if (memberId === socket.userId) continue;
+            if (mentionSet.has(memberId)) continue;
+
+            const memberSocketId = await io.in(`user:${memberId}`).allSockets();
+            const isInRoom = memberSocketId.size > 0 && socketRoom &&
+              [...memberSocketId].some((sid) => socketRoom.has(sid));
+            if (isInRoom) continue;
+
+            await notificationService.createNotification({
+              userId: memberId,
+              type: 'message',
+              title: `${socket.user.username} in #${room.name}`,
+              body: content?.substring(0, 100) || 'Sent a file',
+              senderId: socket.userId,
+              roomId: room._id,
+              messageId: message._id,
+              payload: { roomId: room._id, messageId: message._id },
+            });
+          }
+        }
+      } catch (roomNotifErr) {
+        logger.error('Room notification error:', roomNotifErr);
       }
 
     } catch (error) {
@@ -110,17 +146,10 @@ function registerChatHandlers(io, socket) {
     }
   });
 
-  // Edit message
+  // Edit message — messageService kullanarak kod tekrarını önle
   socket.on(SOCKET_EVENTS.EDIT_MESSAGE, async ({ messageId, content }) => {
     try {
-      const message = await Message.findOne({ _id: messageId, senderId: socket.userId, isDeleted: false });
-      if (!message) return socket.emit(SOCKET_EVENTS.ERROR, { message: 'Message not found' });
-
-      message.editHistory.push({ content: message.content, editedBy: socket.userId });
-      message.content = content;
-      message.isEdited = true;
-      await message.save();
-
+      const { message } = await messageService.editMessage(messageId, socket.userId, content);
       io.to(`room:${message.roomId}`).emit(SOCKET_EVENTS.MESSAGE_EDITED, {
         messageId,
         content,
@@ -128,34 +157,20 @@ function registerChatHandlers(io, socket) {
       });
     } catch (error) {
       logger.error('EDIT_MESSAGE error:', error);
-      socket.emit(SOCKET_EVENTS.ERROR, { message: 'Failed to edit message' });
+      socket.emit(SOCKET_EVENTS.ERROR, { message: error.message || 'Failed to edit message' });
     }
   });
 
-  // Delete message
+  // Delete message — messageService kullanarak kod tekrarını önle
   socket.on(SOCKET_EVENTS.DELETE_MESSAGE, async ({ messageId }) => {
     try {
-      const message = await Message.findById(messageId);
-      if (!message) return socket.emit(SOCKET_EVENTS.ERROR, { message: 'Message not found' });
-
-      const room = await Room.findById(message.roomId);
-      const isOwner = message.senderId.toString() === socket.userId;
-      const isAdmin = room?.hasRole(socket.userId, ['owner', 'admin', 'moderator']);
-
-      if (!isOwner && !isAdmin) {
-        return socket.emit(SOCKET_EVENTS.ERROR, { message: 'Permission denied' });
-      }
-
-      message.isDeleted = true;
-      message.content = 'This message has been deleted';
-      message.deletedAt = new Date();
-      message.deletedBy = socket.userId;
-      await message.save();
-
-      io.to(`room:${message.roomId}`).emit(SOCKET_EVENTS.MESSAGE_DELETED, { messageId });
+      const result = await messageService.deleteMessage(messageId, socket.userId);
+      // roomId'yi result'tan almak için mesajı tekrar sorgulamamak adına
+      // deleteMessage artık roomId de dönsün — bunu aşağıda ekliyoruz
+      io.to(`room:${result.roomId}`).emit(SOCKET_EVENTS.MESSAGE_DELETED, { messageId });
     } catch (error) {
       logger.error('DELETE_MESSAGE error:', error);
-      socket.emit(SOCKET_EVENTS.ERROR, { message: 'Failed to delete message' });
+      socket.emit(SOCKET_EVENTS.ERROR, { message: error.message || 'Failed to delete message' });
     }
   });
 }

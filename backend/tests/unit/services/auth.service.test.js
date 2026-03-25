@@ -4,24 +4,27 @@
 const jwt = require('jsonwebtoken');
 const { setTestEnv } = require('../../helpers/setup');
 
-// Mock redis config before requiring auth service
-jest.mock('../../../src/config/redis', () => ({
-  getRedisClient: () => require('ioredis-mock') && new (require('ioredis-mock'))(),
-}));
-
-const {
-  signAccessToken,
-  signRefreshToken,
-  storeRefreshToken,
-  verifyRefreshToken,
-  revokeAccessToken,
-  revokeRefreshToken,
-  isRefreshTokenValid,
-} = require('../../../src/services/auth.service');
+let mockRedisClient;
 
 beforeAll(() => {
   setTestEnv();
+  const RedisMock = require('ioredis-mock');
+  mockRedisClient = new RedisMock();
 });
+
+const AuthService = require('../../../src/services/auth.service');
+const authService = new AuthService({
+  User: null, // not needed for token-only tests
+  getRedisClient: () => mockRedisClient,
+});
+
+const signAccessToken = authService.signAccessToken.bind(authService);
+const signRefreshToken = authService.signRefreshToken.bind(authService);
+const storeRefreshToken = authService.storeRefreshToken.bind(authService);
+const verifyRefreshToken = authService.verifyRefreshToken.bind(authService);
+const revokeAccessToken = authService.revokeAccessToken.bind(authService);
+const revokeRefreshToken = authService.revokeRefreshToken.bind(authService);
+const isRefreshTokenValid = authService.isRefreshTokenValid.bind(authService);
 
 describe('auth.service', () => {
   describe('signAccessToken', () => {

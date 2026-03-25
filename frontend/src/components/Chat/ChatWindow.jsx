@@ -90,7 +90,7 @@ export default function ChatWindow() {
   if (!activeRoomId) return null;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       <ChatHeader
         room={room}
         onMembersClick={() => openModal('invite', { roomId: activeRoomId })}

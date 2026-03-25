@@ -122,7 +122,7 @@ export default function MessageInput({ roomId }) {
           value={text}
           onChange={(e) => { setText(e.target.value); handleTyping(); }}
           onKeyDown={handleKeyDown}
-          placeholder="Mesaj yaz... (Enter gönder, Shift+Enter yeni satır)"
+          placeholder="Mesaj yaz..."
           className="flex-1 bg-transparent text-white placeholder-gray-400 resize-none outline-none text-sm min-h-[24px] max-h-32 py-1"
           rows={1}
           style={{ height: 'auto' }}

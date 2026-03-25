@@ -1,10 +1,21 @@
-const Notification = require('../models/Notification');
-const { getIO } = require('../config/socket');
+const { SOCKET_EVENTS } = require('../utils/constants');
+const { NotFoundError } = require('../utils/AppError');
 const logger = require('../utils/logger');
 
-async function createNotification({ userId, type, title, body, payload = {}, senderId, roomId, messageId }) {
-  try {
-    const notification = await Notification.create({
+class NotificationService {
+  /**
+   * @param {{ Notification: import('mongoose').Model, getIO: () => import('socket.io').Server }} deps
+   */
+  constructor({ Notification, getIO }) {
+    this.Notification = Notification;
+    this.getIO = getIO;
+  }
+
+  /**
+   * Bildirim oluşturur ve socket üzerinden hedef kullanıcıya iletir.
+   */
+  async createNotification({ userId, type, title, body, payload = {}, senderId, roomId, messageId }) {
+    const notification = await this.Notification.create({
       userId,
       type,
       title,
@@ -15,40 +26,90 @@ async function createNotification({ userId, type, title, body, payload = {}, sen
       messageId,
     });
 
-    // Push real-time notification via socket
-    try {
-      const io = getIO();
-      io.to(`user:${userId}`).emit('new_notification', {
-        notification: notification.toObject(),
-      });
-    } catch (socketErr) {
-      logger.warn('Could not emit notification socket event:', socketErr.message);
-    }
+    const io = this.getIO();
+    const targetRoom = `user:${userId.toString()}`;
+    io.to(targetRoom).emit(SOCKET_EVENTS.NEW_NOTIFICATION, {
+      notification: {
+        _id: notification._id,
+        userId: notification.userId,
+        type: notification.type,
+        title: notification.title,
+        body: notification.body,
+        read: false,
+        payload: notification.payload,
+        sender: notification.sender,
+        roomId: notification.roomId,
+        messageId: notification.messageId,
+        createdAt: notification.createdAt,
+      },
+    });
+    logger.info(`Notification emitted → ${targetRoom} | type:${type} | title:${title}`);
 
     return notification;
-  } catch (error) {
-    logger.error('Failed to create notification:', error);
+  }
+
+  /**
+   * Mention bildirimleri oluşturur.
+   */
+  async createMentionNotifications(message, room) {
+    if (!message.mentions || message.mentions.length === 0) return;
+
+    const senderIdClean = message.senderId?._id || message.senderId;
+
+    for (const mentionedUserId of message.mentions) {
+      if (mentionedUserId.toString() === senderIdClean.toString()) continue;
+
+      await this.createNotification({
+        userId: mentionedUserId,
+        type: 'mention',
+        title: `You were mentioned in #${room.name}`,
+        body: message.content?.substring(0, 100) || 'You were mentioned',
+        senderId: senderIdClean,
+        roomId: room._id,
+        messageId: message._id,
+        payload: { roomId: room._id, messageId: message._id },
+      });
+    }
+  }
+
+  // ── CRUD (controller tarafından kullanılır) ─────────────────────────────
+
+  async getNotifications(userId, { page = 1, limit = 20, unread } = {}) {
+    const query = { userId };
+    if (unread === 'true') query.read = false;
+
+    const total = await this.Notification.countDocuments(query);
+    const notifications = await this.Notification.find(query)
+      .populate('sender', 'username avatarUrl')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const unreadCount = await this.Notification.countDocuments({ userId, read: false });
+
+    return { notifications, unreadCount, total };
+  }
+
+  async markRead(notificationId, userId) {
+    const notification = await this.Notification.findOneAndUpdate(
+      { _id: notificationId, userId },
+      { read: true, readAt: new Date() },
+      { new: true }
+    );
+    if (!notification) throw new NotFoundError('Notification not found');
+    return notification;
+  }
+
+  async markAllRead(userId) {
+    await this.Notification.updateMany(
+      { userId, read: false },
+      { read: true, readAt: new Date() }
+    );
+  }
+
+  async deleteNotification(notificationId, userId) {
+    await this.Notification.findOneAndDelete({ _id: notificationId, userId });
   }
 }
 
-async function createMentionNotifications(message, room) {
-  if (!message.mentions || message.mentions.length === 0) return;
-
-  for (const mentionedUserId of message.mentions) {
-    if (mentionedUserId.toString() === message.senderId.toString()) continue;
-
-    await createNotification({
-      userId: mentionedUserId,
-      type: 'mention',
-      title: `You were mentioned in #${room.name}`,
-      body: message.content?.substring(0, 100) || 'You were mentioned',
-      senderId: message.senderId,
-      roomId: room._id,
-      messageId: message._id,
-      payload: { roomId: room._id, messageId: message._id },
-    });
-  }
-}
-
-module.exports = { createNotification, createMentionNotifications };
-
+module.exports = NotificationService;

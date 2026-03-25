@@ -1,6 +1,9 @@
 const router = require('express').Router();
-const { searchMessages } = require('../controllers/message.controller');
+const createMessageController = require('../controllers/message.controller');
+const { messageService } = require('../container');
 const { authenticate } = require('../middlewares/auth.middleware');
+
+const { searchMessages } = createMessageController(messageService);
 
 router.use(authenticate);
 router.get('/messages', searchMessages);

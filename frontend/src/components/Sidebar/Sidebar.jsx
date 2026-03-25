@@ -10,7 +10,7 @@ import NotificationBell from '../Notifications/NotificationBell';
 
 export default function Sidebar({ onRoomSelect }) {
   const { user, logout } = useAuthStore();
-  const { rooms, activeRoomId, setActiveRoom, unreadCounts } = useChatStore();
+  const { rooms, activeRoomId, setActiveRoom, unreadCounts, userPresence } = useChatStore();
   const { openModal, toggleSearch, activeSidebarTab, setSidebarTab } = useUIStore();
   const { emit } = useSocketStore();
 
@@ -18,7 +18,10 @@ export default function Sidebar({ onRoomSelect }) {
   const dmRooms = rooms.filter((r) => r.type === ROOM_TYPES.DM);
 
   function handleRoomClick(roomId) {
-    if (activeRoomId) emit('leave_room', { roomId: activeRoomId });
+    // Oda değiştirirken leave_room emit ETMİYORUZ.
+    // Kullanıcı tüm odalarının socket room'unda kalarak
+    // mesaj ve bildirim almaya devam eder.
+    // Presence handler zaten connect'te tüm odalara join eder.
     setActiveRoom(roomId);
     emit('join_room', { roomId });
     onRoomSelect?.();
@@ -102,6 +105,7 @@ export default function Sidebar({ onRoomSelect }) {
             activeRoomId={activeRoomId}
             unreadCounts={unreadCounts}
             currentUserId={user?._id}
+            userPresence={userPresence}
             onRoomClick={handleRoomClick}
           />
         )}
@@ -111,7 +115,7 @@ export default function Sidebar({ onRoomSelect }) {
       <div className="px-3 py-3 border-t border-gray-700 flex items-center gap-2">
         <div className="relative flex-shrink-0">
           <Avatar user={user} size="sm" />
-          <StatusBadge status={user?.status || 'online'} className="absolute -bottom-0.5 -right-0.5" />
+          <StatusBadge status={userPresence[user?._id]?.status || user?.status || 'online'} className="absolute -bottom-0.5 -right-0.5" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-white truncate">{user?.username}</p>
@@ -143,7 +147,7 @@ export default function Sidebar({ onRoomSelect }) {
   );
 }
 
-function DMList({ rooms, activeRoomId, unreadCounts, currentUserId, onRoomClick }) {
+function DMList({ rooms, activeRoomId, unreadCounts, currentUserId, userPresence, onRoomClick }) {
   if (!rooms.length) {
     return (
       <div className="text-center py-8 text-gray-500 text-sm">
@@ -158,6 +162,9 @@ function DMList({ rooms, activeRoomId, unreadCounts, currentUserId, onRoomClick 
       {rooms.map((room) => {
         const other = room.members?.find((m) => (m.user?._id || m.user) !== currentUserId);
         const otherUser = other?.user;
+        const otherUserId = otherUser?._id || other?.user;
+        const presence = userPresence[otherUserId];
+        const realTimeStatus = presence?.status || otherUser?.status || 'offline';
         const unread = unreadCounts[room._id] || 0;
         const isActive = activeRoomId === room._id;
 
@@ -170,7 +177,7 @@ function DMList({ rooms, activeRoomId, unreadCounts, currentUserId, onRoomClick 
             <div className="relative flex-shrink-0">
               <Avatar user={otherUser} size="sm" />
               <StatusBadge
-                status={otherUser?.status || 'offline'}
+                status={realTimeStatus}
                 className="absolute -bottom-0.5 -right-0.5"
               />
             </div>

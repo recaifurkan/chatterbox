@@ -48,7 +48,7 @@ export default function ChatHeader({ room, onMembersClick, onSearchClick }) {
           </p>
         )}
         {room.description && (
-          <p className="text-xs text-gray-400 truncate">{room.description}</p>
+          <p className="text-xs text-gray-400 truncate hidden sm:block">{room.description}</p>
         )}
       </div>
 

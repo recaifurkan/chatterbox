@@ -40,21 +40,29 @@ export default function MessageItem({ message, isOwn, isContinuation, roomId }) 
 
   return (
     <div
-      className={`group flex gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'} ${isContinuation ? 'mt-0.5' : 'mt-3'}`}
+      className={`group relative flex gap-1.5 sm:gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'} ${isContinuation ? 'mt-0.5' : 'mt-3'}`}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => { setShowActions(false); }}
+      onClick={(e) => {
+        // Mobile: toggle actions on tap (only if not clicking a button/link)
+        if (window.innerWidth < 640 && e.target.closest('button, a') === null) {
+          setShowActions((v) => !v);
+        }
+      }}
     >
       {/* Avatar */}
-      <div className="flex-shrink-0 w-8">
-        {!isContinuation && !isOwn && (
-          <button onClick={() => openModal('userProfile', { userId: sender?._id })}>
-            <Avatar user={sender} size="sm" />
-          </button>
-        )}
-      </div>
+      {!isOwn && (
+        <div className="flex-shrink-0 w-8">
+          {!isContinuation && (
+            <button onClick={() => openModal('userProfile', { userId: sender?._id })}>
+              <Avatar user={sender} size="sm" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Bubble + meta */}
-      <div className={`flex flex-col max-w-[75%] ${isOwn ? 'items-end' : 'items-start'}`}>
+      <div className={`flex flex-col max-w-[85%] sm:max-w-[75%] min-w-0 ${isOwn ? 'items-end' : 'items-start'}`}>
         {/* Sender name + time */}
         {!isContinuation && (
           <div className={`flex items-center gap-2 mb-0.5 ${isOwn ? 'flex-row-reverse' : ''}`}>
@@ -141,42 +149,29 @@ export default function MessageItem({ message, isOwn, isContinuation, roomId }) 
         )}
       </div>
 
-      {/* Floating action buttons */}
+      {/* ── Desktop: action buttons — normal flex flow, hover ile görünür ── */}
       {showActions && !isDeleted && !editing && (
-        <div className={`flex-shrink-0 flex items-start gap-0.5 ${isOwn ? 'flex-row-reverse order-first' : ''} opacity-0 group-hover:opacity-100 transition-opacity pt-1`}>
-          {/* Quick reactions */}
-          {QUICK_EMOJIS.map((e) => (
-            <button
-              key={e}
-              onClick={() => handleReact(e)}
-              className="w-7 h-7 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center transition-colors"
-            >
-              {e}
-            </button>
-          ))}
+        <div className={`hidden sm:flex flex-shrink-0 items-start gap-0.5 ${isOwn ? 'flex-row-reverse order-first' : ''} opacity-0 group-hover:opacity-100 transition-opacity pt-1`}>
+          <ActionButtons
+            isOwn={isOwn}
+            quickEmojis={QUICK_EMOJIS}
+            onReact={handleReact}
+            onEdit={() => { setEditing(true); setEditText(message.content); }}
+            onDelete={handleDelete}
+          />
+        </div>
+      )}
 
-          {isOwn && (
-            <>
-              <button
-                onClick={() => { setEditing(true); setEditText(message.content); }}
-                className="w-7 h-7 text-gray-400 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center transition-colors"
-                title="Düzenle"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
-              <button
-                onClick={handleDelete}
-                className="w-7 h-7 text-gray-400 hover:text-red-400 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center transition-colors"
-                title="Sil"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            </>
-          )}
+      {/* ── Mobile: action buttons — mesajın üstünde absolute toolbar ── */}
+      {showActions && !isDeleted && !editing && (
+        <div className={`flex sm:hidden absolute z-10 items-center gap-0.5 ${isOwn ? 'right-0' : 'left-10'} -top-9 bg-gray-800 rounded-lg p-1 shadow-lg border border-gray-700`}>
+          <ActionButtons
+            isOwn={isOwn}
+            quickEmojis={QUICK_EMOJIS}
+            onReact={handleReact}
+            onEdit={() => { setEditing(true); setEditText(message.content); }}
+            onDelete={handleDelete}
+          />
         </div>
       )}
     </div>
@@ -214,7 +209,7 @@ function AttachmentPreview({ attachment }) {
         <img
           src={url}
           alt={attachment.originalName}
-          className="max-w-xs rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+          className="max-w-full sm:max-w-xs rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
           style={{ maxHeight: 300 }}
         />
       </a>
@@ -222,7 +217,7 @@ function AttachmentPreview({ attachment }) {
   }
   if (attachment.mimeType?.startsWith('video/')) {
     return (
-      <video src={url} controls className="max-w-xs rounded-lg" style={{ maxHeight: 250 }} />
+      <video src={url} controls className="max-w-full sm:max-w-xs rounded-lg" style={{ maxHeight: 250 }} />
     );
   }
   return (
@@ -247,6 +242,44 @@ function renderContent(content) {
     part.startsWith('@') ? (
       <span key={i} className="text-blue-300 font-medium">{part}</span>
     ) : part
+  );
+}
+
+function ActionButtons({ isOwn, quickEmojis, onReact, onEdit, onDelete }) {
+  return (
+    <>
+      {quickEmojis.map((e) => (
+        <button
+          key={e}
+          onClick={() => onReact(e)}
+          className="w-7 h-7 text-sm bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center transition-colors"
+        >
+          {e}
+        </button>
+      ))}
+      {isOwn && (
+        <>
+          <button
+            onClick={onEdit}
+            className="w-7 h-7 text-gray-400 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center transition-colors"
+            title="Düzenle"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+          <button
+            onClick={onDelete}
+            className="w-7 h-7 text-gray-400 hover:text-red-400 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center transition-colors"
+            title="Sil"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </>
+      )}
+    </>
   );
 }
 

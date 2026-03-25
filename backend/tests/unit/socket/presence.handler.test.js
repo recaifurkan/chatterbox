@@ -7,10 +7,27 @@ let mockRedisClient;
 jest.mock('../../../src/config/redis', () => ({
   getRedisClient: () => mockRedisClient,
 }));
-jest.mock('../../../src/services/presence.service', () => ({
+jest.mock('../../../src/config/socket', () => ({
+  getIO: jest.fn(),
+  initSocket: jest.fn(),
+}));
+jest.mock('../../../src/config/minio', () => ({
+  uploadBuffer: jest.fn(),
+  deleteObject: jest.fn(),
+  extractObjectName: jest.fn(),
+  minioClient: {},
+  BUCKET: 'test',
+  ensureBucket: jest.fn().mockResolvedValue(undefined),
+}));
+
+const mockPresenceService = {
   setUserOnline: jest.fn().mockResolvedValue(undefined),
   setUserOffline: jest.fn().mockResolvedValue(undefined),
   setUserStatus: jest.fn().mockResolvedValue(undefined),
+};
+
+jest.mock('../../../src/container', () => ({
+  presenceService: mockPresenceService,
 }));
 
 function buildSocket(user) {
@@ -45,7 +62,7 @@ afterEach(async () => {
 
 const { registerPresenceHandlers } = require('../../../src/socket/handlers/presence.handler');
 const { SOCKET_EVENTS, USER_STATUS } = require('../../../src/utils/constants');
-const { setUserOnline, setUserOffline, setUserStatus } = require('../../../src/services/presence.service');
+const { setUserOnline, setUserOffline, setUserStatus } = mockPresenceService;
 
 describe('presence.handler', () => {
   it('joins user personal room and sets online on connect', async () => {

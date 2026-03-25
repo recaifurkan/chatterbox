@@ -6,12 +6,17 @@ const { connectDB, disconnectDB, clearDB, setTestEnv, createUser } = require('..
 // Mock socket.io
 const mockEmit = jest.fn();
 const mockTo = jest.fn(() => ({ emit: mockEmit }));
-jest.mock('../../../src/config/socket', () => ({
-  getIO: () => ({ to: mockTo }),
-}));
 
 const Notification = require('../../../src/models/Notification');
-const { createNotification, createMentionNotifications } = require('../../../src/services/notification.service');
+const NotificationService = require('../../../src/services/notification.service');
+
+const notificationService = new NotificationService({
+  Notification,
+  getIO: () => ({ to: mockTo }),
+});
+
+const createNotification = notificationService.createNotification.bind(notificationService);
+const createMentionNotifications = notificationService.createMentionNotifications.bind(notificationService);
 
 beforeAll(async () => {
   setTestEnv();

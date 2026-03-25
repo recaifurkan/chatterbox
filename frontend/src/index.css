@@ -4,13 +4,25 @@
 
 @layer base {
   html { @apply h-full; }
-  body { @apply h-full bg-gray-900 text-white antialiased; }
+  body {
+    @apply h-full bg-gray-900 text-white antialiased;
+    /* Mobilde dış scroll'u ve bounce efektini engelle */
+    overscroll-behavior: none;
+    overflow: hidden;
+    /* iOS Safari sanal klavye sorunlarını azalt */
+    -webkit-text-size-adjust: 100%;
+  }
   #root { @apply h-full; }
   * { @apply box-border; }
   ::-webkit-scrollbar { @apply w-1.5; }
   ::-webkit-scrollbar-track { @apply bg-transparent; }
   ::-webkit-scrollbar-thumb { @apply bg-gray-600 rounded-full; }
   ::-webkit-scrollbar-thumb:hover { @apply bg-gray-500; }
+}
+
+/* dvh desteklemeyen tarayıcılar için fallback */
+@supports not (height: 1dvh) {
+  .h-dvh { height: 100vh; height: -webkit-fill-available; }
 }
 
 @layer components {
@@ -40,7 +52,9 @@
     @apply bg-gray-700 text-white;
   }
   .message-bubble {
-    @apply max-w-[75%] rounded-2xl px-4 py-2.5 text-sm break-words;
+    @apply rounded-2xl px-4 py-2.5 text-sm break-words;
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
   .message-bubble.own {
     @apply bg-blue-600 text-white rounded-br-sm;

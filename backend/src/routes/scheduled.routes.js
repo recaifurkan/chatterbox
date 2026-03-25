@@ -1,6 +1,9 @@
 const router = require('express').Router();
-const { createScheduledMessage, listScheduledMessages, cancelScheduledMessage } = require('../controllers/scheduled.controller');
+const createScheduledController = require('../controllers/scheduled.controller');
+const { schedulerService } = require('../container');
 const { authenticate } = require('../middlewares/auth.middleware');
+
+const { createScheduledMessage, listScheduledMessages, cancelScheduledMessage } = createScheduledController(schedulerService);
 
 router.use(authenticate);
 

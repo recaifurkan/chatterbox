@@ -1,10 +1,13 @@
 const router = require('express').Router();
+const createMessageController = require('../controllers/message.controller');
+const { messageService } = require('../container');
+const { authenticate } = require('../middlewares/auth.middleware');
+const { messageLimiter } = require('../middlewares/rateLimiter.middleware');
+
 const {
   getMessages, editMessage, deleteMessage, markRead,
   addReaction, removeReaction, getAuditLog,
-} = require('../controllers/message.controller');
-const { authenticate } = require('../middlewares/auth.middleware');
-const { messageLimiter } = require('../middlewares/rateLimiter.middleware');
+} = createMessageController(messageService);
 
 router.use(authenticate);
 

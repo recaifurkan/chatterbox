@@ -122,11 +122,15 @@ function registerEventHandlers(socket) {
   });
 
   // Notification
-  socket.on(SOCKET_EVENTS.NEW_NOTIFICATION, ({ notification }) => {
-    notif().addNotification(notification);
-    // Browser notification
-    if (Notification.permission === 'granted') {
-      new Notification(notification.title, { body: notification.body });
+  socket.on(SOCKET_EVENTS.NEW_NOTIFICATION, (data) => {
+    console.log('[Socket] NEW_NOTIFICATION received:', data);
+    const notification = data?.notification;
+    if (notification && notification._id) {
+      notif().addNotification(notification);
+      // Browser notification
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        new Notification(notification.title || 'Bildirim', { body: notification.body });
+      }
     }
   });
 

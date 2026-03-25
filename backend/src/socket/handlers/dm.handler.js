@@ -2,10 +2,10 @@ const Room = require('../../models/Room');
 const Message = require('../../models/Message');
 const User = require('../../models/User');
 const { SOCKET_EVENTS, ROOM_TYPES, ROOM_ROLES, MESSAGE_TYPES } = require('../../utils/constants');
-const { createNotification } = require('../../services/notification.service');
 const logger = require('../../utils/logger');
 
 function registerDMHandlers(io, socket) {
+  const { notificationService } = require('../../container');
   socket.on(SOCKET_EVENTS.SEND_DM, async ({ targetUserId, content, attachments = [] }) => {
     try {
       if (targetUserId === socket.userId) {
@@ -70,8 +70,8 @@ function registerDMHandlers(io, socket) {
         message,
       });
 
-      // Notification
-      await createNotification({
+      // Notification — io artık method parametresi değil, service içinde
+      await notificationService.createNotification({
         userId: targetUserId,
         type: 'dm',
         title: `New message from ${socket.user.username}`,

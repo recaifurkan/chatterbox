@@ -1,10 +1,13 @@
 const router = require('express').Router();
+const createUserController = require('../controllers/user.controller');
+const { userService } = require('../container');
+const { authenticate } = require('../middlewares/auth.middleware');
+const { avatarUpload } = require('../middlewares/upload.middleware');
+
 const {
   getProfile, updateProfile, uploadAvatar, setStatus,
   blockUser, unblockUser, muteUser, searchUsers,
-} = require('../controllers/user.controller');
-const { authenticate } = require('../middlewares/auth.middleware');
-const { avatarUpload } = require('../middlewares/upload.middleware');
+} = createUserController(userService);
 
 router.use(authenticate);
 

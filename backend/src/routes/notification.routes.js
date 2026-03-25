@@ -1,6 +1,9 @@
 const router = require('express').Router();
-const { getNotifications, markRead, markAllRead, deleteNotification } = require('../controllers/notification.controller');
+const createNotificationController = require('../controllers/notification.controller');
+const { notificationService } = require('../container');
 const { authenticate } = require('../middlewares/auth.middleware');
+
+const { getNotifications, markRead, markAllRead, deleteNotification } = createNotificationController(notificationService);
 
 router.use(authenticate);
 

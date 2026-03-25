@@ -4,6 +4,20 @@
 const mongoose = require('mongoose');
 const { connectDB, disconnectDB, clearDB, setTestEnv, createUser, createRoom, createMessage } = require('../../helpers/setup');
 
+// Mock infrastructure so container loads successfully
+jest.mock('../../../src/config/redis', () => ({
+  getRedisClient: jest.fn(),
+  connectRedis: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('../../../src/config/socket', () => ({
+  getIO: jest.fn(),
+  initializeSocket: jest.fn(),
+}));
+jest.mock('../../../src/config/minio', () => ({
+  uploadBuffer: jest.fn(), deleteObject: jest.fn(), extractObjectName: jest.fn(),
+  minioClient: {}, BUCKET: 'test', ensureBucket: jest.fn().mockResolvedValue(undefined),
+}));
+
 let mockIO;
 
 function buildSocket(user) {

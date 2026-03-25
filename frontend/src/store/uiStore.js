@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export const useUIStore = create((set) => ({
-  sidebarOpen: true,
+  sidebarOpen: false,
   activeModal: null,
   modalData: null,
   searchOpen: false,

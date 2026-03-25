@@ -7,8 +7,32 @@ const { connectDB, disconnectDB, clearDB, setTestEnv, createUser, createRoom, cr
 jest.mock('../../../src/config/socket', () => ({
   getIO: () => mockIO,
 }));
-jest.mock('../../../src/services/notification.service', () => ({
+jest.mock('../../../src/config/redis', () => ({
+  getRedisClient: jest.fn(),
+  connectRedis: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('../../../src/config/minio', () => ({
+  uploadBuffer: jest.fn(),
+  deleteObject: jest.fn(),
+  extractObjectName: jest.fn(),
+  minioClient: {},
+  BUCKET: 'test',
+  ensureBucket: jest.fn().mockResolvedValue(undefined),
+}));
+
+const mockNotificationService = {
+  createNotification: jest.fn().mockResolvedValue(undefined),
   createMentionNotifications: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockMessageServiceForSocket = {
+  editMessage: jest.fn(),
+  deleteMessage: jest.fn(),
+};
+
+jest.mock('../../../src/container', () => ({
+  notificationService: mockNotificationService,
+  messageService: mockMessageServiceForSocket,
 }));
 
 let mockIO;
@@ -184,6 +208,11 @@ describe('chat.handler - edit_message', () => {
     const msg = await createMessage(room._id, user._id, { content: 'Original' });
     mockIO = buildIO();
     const socket = buildSocket(user);
+
+    mockMessageServiceForSocket.editMessage.mockResolvedValueOnce({
+      message: { _id: msg._id, roomId: room._id, content: 'Updated content', isEdited: true },
+    });
+
     const handlers = registerAndGetHandlers(mockIO, socket);
 
     await handlers[SOCKET_EVENTS.EDIT_MESSAGE]({
@@ -198,6 +227,10 @@ describe('chat.handler - edit_message', () => {
     const user = await createUser();
     mockIO = buildIO();
     const socket = buildSocket(user);
+
+    const { NotFoundError } = require('../../../src/utils/AppError');
+    mockMessageServiceForSocket.editMessage.mockRejectedValueOnce(new NotFoundError('Message not found'));
+
     const handlers = registerAndGetHandlers(mockIO, socket);
 
     await handlers[SOCKET_EVENTS.EDIT_MESSAGE]({
@@ -216,6 +249,11 @@ describe('chat.handler - delete_message', () => {
     const msg = await createMessage(room._id, user._id);
     mockIO = buildIO();
     const socket = buildSocket(user);
+
+    mockMessageServiceForSocket.deleteMessage.mockResolvedValueOnce({
+      messageId: msg._id, roomId: room._id,
+    });
+
     const handlers = registerAndGetHandlers(mockIO, socket);
 
     await handlers[SOCKET_EVENTS.DELETE_MESSAGE]({ messageId: msg._id.toString() });
@@ -232,6 +270,10 @@ describe('chat.handler - delete_message', () => {
     const msg = await createMessage(room._id, owner._id);
     mockIO = buildIO();
     const socket = buildSocket(member);
+
+    const { ForbiddenError } = require('../../../src/utils/AppError');
+    mockMessageServiceForSocket.deleteMessage.mockRejectedValueOnce(new ForbiddenError('Permission denied'));
+
     const handlers = registerAndGetHandlers(mockIO, socket);
 
     await handlers[SOCKET_EVENTS.DELETE_MESSAGE]({ messageId: msg._id.toString() });

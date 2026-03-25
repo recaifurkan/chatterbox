@@ -1,67 +1,123 @@
 const cron = require('node-cron');
-const Message = require('../models/Message');
-const Room = require('../models/Room');
-const { getRedisClient } = require('../config/redis');
-const { getIO } = require('../config/socket');
 const { SOCKET_EVENTS } = require('../utils/constants');
+const { BadRequestError, NotFoundError } = require('../utils/AppError');
 const logger = require('../utils/logger');
 
 const LOCK_KEY = 'scheduler:lock';
-const LOCK_TTL = 55; // seconds
+const LOCK_TTL = 55;
 
-function startScheduler() {
-  cron.schedule('* * * * *', async () => {
-    const redis = getRedisClient();
+class SchedulerService {
+  constructor({ Message, Room, getRedisClient, getIO }) {
+    this.Message = Message;
+    this.Room = Room;
+    this.getRedisClient = getRedisClient;
+    this.getIO = getIO;
+  }
 
-    // Distributed lock to prevent duplicate execution in multi-server setup
-    const acquired = await redis.set(LOCK_KEY, '1', 'EX', LOCK_TTL, 'NX');
-    if (!acquired) return;
+  // ── CRUD (controller tarafından kullanılır) ─────────────────────────────
 
-    try {
-      const now = new Date();
-      const dueMessages = await Message.find({
-        isScheduled: true,
-        scheduledAt: { $lte: now },
-        isDeleted: false,
-      }).populate('senderId', 'username avatarUrl');
-
-      await Promise.all(
-        dueMessages.map(async (message) => {
-          try {
-            message.isScheduled = false;
-            message.scheduledAt = null;
-            await message.save();
-
-            const room = await Room.findById(message.roomId);
-            if (!room) return;
-
-            // Update room last activity
-            room.lastMessage = message._id;
-            room.lastActivity = now;
-            await room.save();
-
-            // Broadcast to room
-            const io = getIO();
-            io.to(`room:${message.roomId}`).emit(SOCKET_EVENTS.NEW_MESSAGE, {
-              message: message.toObject(),
-            });
-
-            logger.info(`Scheduled message ${message._id} sent to room ${message.roomId}`);
-          } catch (msgError) {
-            logger.error(`Failed to process scheduled message ${message._id}:`, msgError);
-          }
-        })
-      );
-    } catch (error) {
-      logger.error('Scheduler error:', error);
-    } finally {
-      // Always release the lock so next minute's run isn't blocked on error
-      await redis.del(LOCK_KEY);
+  async createScheduledMessage(userId, { roomId, content, attachments = [], scheduledAt }) {
+    if (!scheduledAt || new Date(scheduledAt) <= new Date()) {
+      throw new BadRequestError('scheduledAt must be in the future');
     }
-  });
 
-  logger.info('✅ Message scheduler started');
+    if (!content && attachments.length === 0) {
+      throw new BadRequestError('Message must have content or at least one attachment');
+    }
+
+    const room = await this.Room.findById(roomId);
+    if (!room || !room.isMember(userId)) {
+      throw new NotFoundError('Room not found or not a member');
+    }
+
+    const message = await this.Message.create({
+      roomId,
+      senderId: userId,
+      content,
+      attachments,
+      isScheduled: true,
+      scheduledAt: new Date(scheduledAt),
+    });
+
+    return { message };
+  }
+
+  async listScheduledMessages(userId) {
+    const messages = await this.Message.find({
+      senderId: userId,
+      isScheduled: true,
+      isDeleted: false,
+    }).populate('roomId', 'name').sort({ scheduledAt: 1 });
+
+    return { messages };
+  }
+
+  async cancelScheduledMessage(messageId, userId) {
+    const message = await this.Message.findOne({
+      _id: messageId,
+      senderId: userId,
+      isScheduled: true,
+    });
+
+    if (!message) throw new NotFoundError('Scheduled message not found');
+
+    message.isDeleted = true;
+    message.isScheduled = false;
+    await message.save();
+  }
+
+  // ── Cron job ────────────────────────────────────────────────────────────
+
+  startScheduler() {
+    cron.schedule('* * * * *', async () => {
+      const redis = this.getRedisClient();
+
+      const acquired = await redis.set(LOCK_KEY, '1', 'EX', LOCK_TTL, 'NX');
+      if (!acquired) return;
+
+      try {
+        const now = new Date();
+        const dueMessages = await this.Message.find({
+          isScheduled: true,
+          scheduledAt: { $lte: now },
+          isDeleted: false,
+        }).populate('senderId', 'username avatarUrl');
+
+        await Promise.all(
+          dueMessages.map(async (message) => {
+            try {
+              message.isScheduled = false;
+              message.scheduledAt = null;
+              await message.save();
+
+              const room = await this.Room.findById(message.roomId);
+              if (!room) return;
+
+              room.lastMessage = message._id;
+              room.lastActivity = now;
+              await room.save();
+
+              const io = this.getIO();
+              io.to(`room:${message.roomId}`).emit(SOCKET_EVENTS.NEW_MESSAGE, {
+                message: message.toObject(),
+              });
+
+              logger.info(`Scheduled message ${message._id} sent to room ${message.roomId}`);
+            } catch (msgError) {
+              logger.error(`Failed to process scheduled message ${message._id}:`, msgError);
+            }
+          })
+        );
+      } catch (error) {
+        logger.error('Scheduler error:', error);
+      } finally {
+        await redis.del(LOCK_KEY);
+      }
+    });
+
+    logger.info('✅ Message scheduler started');
+  }
 }
 
-module.exports = { startScheduler };
+module.exports = SchedulerService;
 

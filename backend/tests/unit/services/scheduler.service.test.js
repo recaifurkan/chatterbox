@@ -5,14 +5,9 @@ const mongoose = require('mongoose');
 const { connectDB, disconnectDB, clearDB, setTestEnv, createUser, createRoom, createMessage } = require('../../helpers/setup');
 
 let mockRedisClient;
-jest.mock('../../../src/config/redis', () => ({
-  getRedisClient: () => mockRedisClient,
-}));
 
 const mockEmit = jest.fn();
-jest.mock('../../../src/config/socket', () => ({
-  getIO: () => ({ to: jest.fn(() => ({ emit: mockEmit })) }),
-}));
+const mockGetIO = () => ({ to: jest.fn(() => ({ emit: mockEmit })) });
 
 // Mock node-cron so we can capture and trigger the scheduled function manually
 let capturedCronCallback;
@@ -36,17 +31,30 @@ afterEach(async () => {
   capturedCronCallback = undefined;
 });
 
+const Message = require('../../../src/models/Message');
+const Room = require('../../../src/models/Room');
+const SchedulerService = require('../../../src/services/scheduler.service');
+
+function createSchedulerService() {
+  return new SchedulerService({
+    Message,
+    Room,
+    getRedisClient: () => mockRedisClient,
+    getIO: mockGetIO,
+  });
+}
+
 describe('scheduler.service - startScheduler', () => {
   it('registers a cron job', () => {
     const cron = require('node-cron');
-    const { startScheduler } = require('../../../src/services/scheduler.service');
-    startScheduler();
+    const service = createSchedulerService();
+    service.startScheduler();
     expect(cron.schedule).toHaveBeenCalledWith('* * * * *', expect.any(Function));
   });
 
   it('does nothing when lock is already held', async () => {
-    const { startScheduler } = require('../../../src/services/scheduler.service');
-    startScheduler();
+    const service = createSchedulerService();
+    service.startScheduler();
 
     // Pre-set the lock
     await mockRedisClient.set('scheduler:lock', '1', 'EX', 55);
@@ -58,8 +66,8 @@ describe('scheduler.service - startScheduler', () => {
   });
 
   it('processes due scheduled messages and emits NEW_MESSAGE', async () => {
-    const { startScheduler } = require('../../../src/services/scheduler.service');
-    startScheduler();
+    const service = createSchedulerService();
+    service.startScheduler();
 
     const user = await createUser();
     const room = await createRoom(user._id);
@@ -74,21 +82,18 @@ describe('scheduler.service - startScheduler', () => {
 
     await capturedCronCallback();
 
-    const Message = require('../../../src/models/Message');
     const updated = await Message.findById(msg._id);
     expect(updated.isScheduled).toBe(false);
     expect(mockEmit).toHaveBeenCalled();
   });
 
   it('releases lock in finally block even on error', async () => {
-    const { startScheduler } = require('../../../src/services/scheduler.service');
-    startScheduler();
+    const service = createSchedulerService();
+    service.startScheduler();
 
     // Create a message that will cause a processing error (bad roomId type)
     const user = await createUser();
     const pastDate = new Date(Date.now() - 60000);
-    // Create message with invalid roomId to cause an error when finding room
-    const Message = require('../../../src/models/Message');
     await Message.create({
       roomId: new mongoose.Types.ObjectId(),
       senderId: user._id,
@@ -106,8 +111,8 @@ describe('scheduler.service - startScheduler', () => {
   });
 
   it('skips messages for rooms that no longer exist', async () => {
-    const { startScheduler } = require('../../../src/services/scheduler.service');
-    startScheduler();
+    const service = createSchedulerService();
+    service.startScheduler();
 
     const user = await createUser();
     const fakeRoomId = new mongoose.Types.ObjectId();

@@ -35,7 +35,7 @@ export default function MessageList({ messages, currentUserId, loading, loadingM
   const groupedMessages = groupByDate(messages);
 
   return (
-    <div ref={containerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+    <div ref={containerRef} className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-4 py-4 space-y-1">
       {/* Load more trigger */}
       <div ref={topRef} className="h-1" />
 
