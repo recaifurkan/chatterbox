@@ -8,6 +8,11 @@ A full-stack real-time chat application built with Node.js, Socket.IO, Redis, Re
 
 ```
                           ┌─────────────────────────────┐
+                          │        Ngrok Tunnel          │
+                          │  Public HTTPS → localhost    │
+                          └────────────┬────────────────┘
+                                       │
+                          ┌────────────▼────────────────┐
                           │           Nginx              │
                           │  Reverse Proxy + WS Upgrade  │
                           └────────────┬────────────────┘
@@ -15,7 +20,7 @@ A full-stack real-time chat application built with Node.js, Socket.IO, Redis, Re
                           ┌────────────┴────────────┐
                           │                         │
                ┌──────────▼──────────┐   ┌──────────▼──────────┐
-               │      Frontend       │   │      Backend(s)      │
+               │   Frontend (×2)     │   │    Backend (×2)      │
                │   React + Vite      │   │   Node.js + Express  │
                │   Tailwind + Zustand│   │   Socket.IO          │
                └─────────────────────┘   └──────────┬──────────┘
@@ -30,6 +35,8 @@ A full-stack real-time chat application built with Node.js, Socket.IO, Redis, Re
 ```
 
 Redis Adapter enables running multiple backend instances simultaneously. All Socket.IO events are synchronized across nodes via Redis Pub/Sub.
+
+Ngrok provides a public HTTPS tunnel for external access (mobile testing, demos, webhooks, etc.).
 
 ---
 
@@ -79,7 +86,7 @@ Redis Adapter enables running multiple backend instances simultaneously. All Soc
 ### Security
 - Rate limiting on auth, API, upload, and message routes
 - Helmet.js HTTP security headers
-- CORS restriction
+- CORS restriction (auto-allow localhost + RFC-1918 private IPs)
 - File MIME-type whitelist and size limits
 - Socket authentication on every connection
 - Audit log for all edit and delete actions
@@ -102,6 +109,7 @@ chatterbox/
 │   ├── server.js
 │   └── src/
 │       ├── app.js
+│       ├── container.js      ← DI container
 │       ├── config/
 │       ├── models/
 │       ├── controllers/
@@ -112,6 +120,7 @@ chatterbox/
 │       └── utils/
 └── frontend/
     ├── .env.example          ← Frontend template (copy → frontend/.env)
+    ├── vite.config.js        ← Vite proxy for local dev
     └── src/
         ├── App.jsx
         ├── pages/
@@ -132,7 +141,7 @@ chatterbox/
 ### Quick Start
 
 ```bash
-git clone https://github.com/your-username/chatterbox.git
+git clone https://github.com/recaifurkan/chatterbox.git
 cd chatterbox
 
 # 1. Create your .env from the template and set strong secrets
@@ -180,11 +189,63 @@ Frontend:
 
 ```bash
 cd frontend
-cp .env.example .env   # set VITE_API_URL=http://localhost:5000/api/v1
-#                        set VITE_SOCKET_URL=http://localhost:5000
+cp .env.example .env   # defaults work with Vite proxy
 npm install
 npm run dev            # http://localhost:3000
 ```
+
+> **Note:** In local dev mode, Vite automatically proxies `/api` and `/socket.io` requests to the backend (`VITE_BACKEND_URL`, default `http://localhost:5000`). No CORS issues, no need to set full URLs. Other devices on the same LAN can access the app via `http://<your-ip>:3000`.
+
+---
+
+## Ngrok — Public HTTPS Tunnel
+
+The `docker-compose.yml` includes a built-in **ngrok** service that creates a public HTTPS tunnel pointing to the Nginx container. This is useful for:
+
+- 📱 Testing the app from a mobile device outside your local network
+- 🔗 Sharing a live demo link with others
+- 🪝 Receiving webhooks from external services
+- 🧪 Testing HTTPS-only browser features (e.g., Notification API, clipboard)
+
+### Setup
+
+1. Sign up at [https://ngrok.com](https://ngrok.com) and get your **Authtoken** from the [dashboard](https://dashboard.ngrok.com/get-started/your-authtoken).
+
+2. Add the token to your `.env` file:
+
+   ```dotenv
+   NGROK_AUTHTOKEN=your_ngrok_authtoken_here
+   ```
+
+3. Start the stack as usual:
+
+   ```bash
+   ./start.sh
+   ```
+
+4. Find your public URL:
+
+   - **Ngrok web inspector:** open [http://localhost:4040](http://localhost:4040) in your browser
+   - **Or via API:**
+     ```bash
+     curl -s http://localhost:4040/api/tunnels | python3 -c \
+       "import sys,json; print(json.load(sys.stdin)['tunnels'][0]['public_url'])"
+     ```
+
+5. *(Optional)* Add the ngrok URL to `CORS_ORIGINS` or `CLIENT_URL` in `.env` if running in production mode:
+
+   ```dotenv
+   CLIENT_URL=https://xxxx-xx-xx-xx-xx.ngrok-free.app
+   ```
+
+   > In **development** mode (`NODE_ENV=development`) all origins are allowed automatically, so this step is not needed for local testing.
+
+### Ngrok Web Inspector
+
+The ngrok web inspector at `http://localhost:4040` lets you:
+- See the public HTTPS URL
+- Inspect all HTTP/WebSocket traffic in real time
+- Replay requests for debugging
 
 ---
 
@@ -196,37 +257,61 @@ npm run dev            # http://localhost:3000
 |----------|-------------|----------|
 | `MONGO_ROOT_USERNAME` | MongoDB root user | ✅ |
 | `MONGO_ROOT_PASSWORD` | MongoDB root password | ✅ |
-| `MONGO_DB` | Database name | ✅ |
+| `MONGO_DB` | Database name | default: `chatterboxdb` |
+| `MONGO_PORT` | Host port for MongoDB | default: `27017` |
 | `REDIS_PASSWORD` | Redis password | ✅ |
+| `REDIS_PORT` | Host port for Redis | default: `6379` |
 | `JWT_SECRET` | JWT signing secret ≥ 32 chars — `openssl rand -hex 32` | ✅ |
 | `JWT_REFRESH_SECRET` | Refresh token secret ≥ 32 chars | ✅ |
+| `JWT_EXPIRES_IN` | Access token TTL | default: `15m` |
+| `JWT_REFRESH_EXPIRES_IN` | Refresh token TTL | default: `7d` |
 | `MINIO_ACCESS_KEY` | MinIO / S3 access key | ✅ |
 | `MINIO_SECRET_KEY` | MinIO / S3 secret key | ✅ |
 | `MINIO_BUCKET` | Storage bucket name | default: `chatterbox-uploads` |
+| `MINIO_API_PORT` | Host port for MinIO S3 API | default: `9000` |
+| `MINIO_CONSOLE_PORT` | Host port for MinIO web console | default: `9001` |
 | `CLIENT_URL` | Allowed CORS origin | default: `http://localhost` |
-| `APP_PORT` | Host port for the app | default: `80` |
-| `JWT_EXPIRES_IN` | Access token TTL | default: `15m` |
-| `JWT_REFRESH_EXPIRES_IN` | Refresh token TTL | default: `7d` |
+| `CORS_ORIGINS` | Extra allowed CORS origins (comma-separated) | optional |
+| `APP_PORT` | Host port for the app (Nginx) | default: `80` |
+| `RATE_LIMIT_WINDOW_MS` | Rate limit window (ms) | default: `900000` |
+| `RATE_LIMIT_MAX` | Max requests per window per IP | default: `1000` |
+| `MAX_FILE_SIZE` | Max upload file size (bytes) | default: `26214400` |
+| `LOG_LEVEL` | Log level: debug, info, warn, error | default: `info` |
+| `NGROK_AUTHTOKEN` | Ngrok auth token for public tunnel | optional |
 
 ### `backend/.env` — Local Development
 
 | Variable | Description |
 |----------|-------------|
+| `NODE_ENV` | `development` or `production` |
+| `PORT` | Server port (default: `5000`) |
+| `INSTANCE_ID` | Instance identifier for logging |
 | `MONGODB_URI` | Full MongoDB connection string |
 | `REDIS_URL` | Redis connection string |
 | `JWT_SECRET` | Same as above |
 | `JWT_REFRESH_SECRET` | Same as above |
-| `CLIENT_URL` | Allowed CORS origin |
+| `JWT_EXPIRES_IN` | Access token TTL |
+| `JWT_REFRESH_EXPIRES_IN` | Refresh token TTL |
+| `CLIENT_URL` | Primary allowed CORS origin |
+| `CORS_ORIGINS` | Extra CORS origins (comma-separated) |
 | `MINIO_ENDPOINT` | MinIO host (`localhost` for local, `minio` in Docker) |
+| `MINIO_PORT` | MinIO port (default: `9000`) |
+| `MINIO_USE_SSL` | Use SSL for MinIO (default: `false`) |
 | `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | MinIO credentials |
 | `MINIO_BUCKET` | Bucket name |
+| `MAX_FILE_SIZE` | Max upload size in bytes |
+| `RATE_LIMIT_WINDOW_MS` / `RATE_LIMIT_MAX` | Rate limiting |
+| `LOG_LEVEL` | Logging level |
 
 ### `frontend/.env` — Vite
 
 | Variable | Description |
 |----------|-------------|
-| `VITE_API_URL` | API base URL (`/api/v1` in Docker, full URL in local dev) |
-| `VITE_SOCKET_URL` | Socket.IO URL (empty = same origin) |
+| `VITE_API_URL` | API base URL (default: `/api/v1` — works with both Nginx and Vite proxy) |
+| `VITE_SOCKET_URL` | Socket.IO URL (empty = same origin, recommended) |
+| `VITE_BACKEND_URL` | Vite proxy target for local dev (default: `http://localhost:5000`) |
+
+> **Tip:** In local development, the Vite dev server proxies `/api` and `/socket.io` to `VITE_BACKEND_URL`. This means you can use relative URLs everywhere and avoid CORS issues entirely.
 
 ---
 
@@ -304,6 +389,12 @@ npm run dev            # http://localhost:3000
 | POST   | `/api/v1/scheduled` | Schedule a message |
 | DELETE | `/api/v1/scheduled/:id` | Cancel scheduled message |
 
+### Health Check
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check with instance ID and timestamp |
+
 ---
 
 ## Socket.IO Events
@@ -347,11 +438,25 @@ npm run dev            # http://localhost:3000
 
 ## Horizontal Scaling
 
-`docker-compose.yml` includes two backend nodes (`backend`, `backend2`) by default. Nginx distributes connections using `least_conn`.
+`docker-compose.yml` includes two backend nodes (`backend`, `backend2`) and two frontend nodes (`frontend`, `frontend2`) by default. Nginx distributes connections using `least_conn` for both upstreams.
 
 Since all transports are forced to WebSocket (`transports: ['websocket']`), sticky sessions are not required. Once a WebSocket connection is established it stays on the same node for its lifetime. Cross-node messaging is handled transparently by the Redis Adapter.
 
 The scheduled message runner uses a Redis `SET NX EX` distributed lock to guarantee only one node executes the cron job at a time.
+
+---
+
+## CORS Policy
+
+The backend automatically allows the following origins:
+
+- `CLIENT_URL` environment variable (single or comma-separated list)
+- `CORS_ORIGINS` environment variable (extra origins, comma-separated)
+- `localhost` and `127.x.x.x` on any port
+- RFC-1918 private network addresses: `192.168.x.x`, `10.x.x.x`, `172.16-31.x.x`
+- In **development** mode (`NODE_ENV=development`), all origins are allowed
+
+This means devices on the same Wi-Fi / LAN can access the app without any extra configuration.
 
 ---
 
@@ -366,9 +471,10 @@ The scheduled message runner uses a Redis `SET NX EX` distributed lock to guaran
 | Cache / Broker | Redis 7 (ioredis, @socket.io/redis-adapter) |
 | File Storage | MinIO (S3-compatible, private bucket) |
 | Auth | JWT (jsonwebtoken), bcryptjs |
-| File Upload | Multer |
+| File Upload | Multer, Sharp (image processing) |
 | Logging | Winston + daily-rotate-file |
 | Scheduler | node-cron + Redis distributed lock |
 | Proxy | Nginx Alpine |
+| Tunnel | Ngrok |
 | Containers | Docker, Docker Compose |
 
