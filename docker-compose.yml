@@ -28,6 +28,28 @@ x-backend-env: &backend-env
   RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
   RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
   LOG_LEVEL: ${LOG_LEVEL:-info}
+  LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+  LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-devsecret}
+  # Kaç LiveKit server çalışıyor (docker-compose'daki livekit1..N ile eşleşmeli)
+  LIVEKIT_SERVER_COUNT: ${LIVEKIT_SERVER_COUNT:-2}
+
+# ─── Ortak LiveKit server ayarları (YAML anchor) ─────────────────────────────
+x-livekit-base: &livekit-base
+  image: livekit/livekit-server:latest
+  restart: unless-stopped
+  environment:
+    LIVEKIT_KEYS: "${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-devsecret}"
+  command: >
+    --dev
+    --bind 0.0.0.0
+    --port 7880
+  networks:
+    - chatterbox_network
+  healthcheck:
+    test: ["CMD", "wget", "--spider", "-q", "http://localhost:7880"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
 
 x-backend-base: &backend-base
   build:
@@ -141,6 +163,16 @@ services:
       "
     networks:
       - chatterbox_network
+
+  # ── LiveKit Server 1 (WebRTC SFU) ─────────────────────────────────────────
+  livekit1:
+    <<: *livekit-base
+    container_name: chatterbox_livekit_1
+
+  # ── LiveKit Server 2 (WebRTC SFU) ─────────────────────────────────────────
+  livekit2:
+    <<: *livekit-base
+    container_name: chatterbox_livekit_2
 
   # ── Backend Node 1 ─────────────────────────────────────────────────────────
   backend:

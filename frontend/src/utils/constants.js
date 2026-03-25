@@ -26,7 +26,14 @@ export const SOCKET_EVENTS = {
   REACTION_UPDATED: 'reaction_updated',
   MARK_READ: 'mark_read',
   MESSAGES_READ: 'messages_read',
-  NEW_NOTIFICATION: 'new_notification',
+  // Calls (LiveKit signaling — sinyal yalnızca Socket.IO üzerinden)
+  CALL_INITIATE: 'call_initiate',
+  CALL_INCOMING: 'call_incoming',
+  CALL_ACCEPT: 'call_accept',
+  CALL_REJECT: 'call_reject',
+  CALL_END: 'call_end',
+  CALL_BUSY: 'call_busy',
+
   ERROR: 'error',
 };
 

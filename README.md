@@ -23,15 +23,21 @@ A full-stack real-time chat application built with Node.js, Socket.IO, Redis, Re
                │   Frontend (×2)     │   │    Backend (×2)      │
                │   React + Vite      │   │   Node.js + Express  │
                │   Tailwind + Zustand│   │   Socket.IO          │
-               └─────────────────────┘   └──────────┬──────────┘
-                                                     │
-                                    ┌────────────────┼───────────────┐
-                                    │                │               │
-                             ┌──────▼─────┐   ┌──────▼─────┐  ┌────▼─────┐
-                             │  MongoDB   │   │   Redis    │  │  MinIO   │
-                             │   data     │   │  adapter   │  │  files   │
-                             └────────────┘   │  sessions  │  └──────────┘
-                                              └────────────┘
+               └──────────┬──────────┘   └──────────┬──────────┘
+                          │                          │
+                          │              ┌───────────┼───────────────┐
+                          │              │           │               │
+                          │       ┌──────▼─────┐ ┌──▼────────┐ ┌───▼──────┐
+                          │       │  MongoDB   │ │   Redis   │ │  MinIO   │
+                          │       │   data     │ │  adapter  │ │  files   │
+                          │       └────────────┘ │  sessions │ └──────────┘
+                          │                      └───────────┘
+                          │
+                 ┌────────▼──────────┐
+                 │   LiveKit Server  │
+                 │   WebRTC SFU      │
+                 │   (voice/video)   │
+                 └───────────────────┘
 ```
 
 Redis Adapter enables running multiple backend instances simultaneously. All Socket.IO events are synchronized across nodes via Redis Pub/Sub.
@@ -72,6 +78,9 @@ Ngrok provides a public HTTPS tunnel for external access (mobile testing, demos,
 - Typing indicators with auto-clear
 - Online / offline / busy / idle presence broadcast
 - User joined / left room notifications
+- **WebRTC voice and video calls via LiveKit SFU (1:1 in DM rooms)**
+- **Call controls: mute, camera toggle, screen sharing**
+- **LiveKit handles all WebRTC complexity (SDP, ICE, TURN/STUN)**
 
 ### Notifications
 - Real-time in-app notifications (Socket.IO)
@@ -415,6 +424,10 @@ The ngrok web inspector at `http://localhost:4040` lets you:
 | `add_reaction` | `{ messageId, emoji }` | Add reaction |
 | `remove_reaction` | `{ messageId, emoji }` | Remove reaction |
 | `mark_read` | `{ roomId, messageIds[] }` | Mark messages as read |
+| `call_initiate` | `{ roomId, targetUserId, callType }` | Start a voice/video call |
+| `call_accept` | `{ callId }` | Accept an incoming call |
+| `call_reject` | `{ callId }` | Reject an incoming call |
+| `call_end` | `{ callId }` | End an active call |
 
 ### Server → Client
 
@@ -433,6 +446,11 @@ The ngrok web inspector at `http://localhost:4040` lets you:
 | `room_joined` | `{ roomId }` | Confirmed room join |
 | `user_joined_room` | `{ roomId, user }` | Another user joined |
 | `user_left_room` | `{ roomId, userId }` | Another user left |
+| `call_incoming` | `{ callId, roomId, callType, callerId, callerName }` | Incoming call notification |
+| `call_accept` | `{ callId, userId, livekitUrl, livekitToken }` | Call accepted — includes LiveKit connection info |
+| `call_reject` | `{ callId, userId }` | Call rejected by other party |
+| `call_end` | `{ callId, endedBy }` | Call ended |
+| `call_busy` | `{ targetUserId }` | Target user is already in a call |
 
 ---
 

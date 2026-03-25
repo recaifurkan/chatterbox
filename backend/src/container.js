@@ -27,6 +27,7 @@ const RoomService = require('./services/room.service');
 const SchedulerService = require('./services/scheduler.service');
 const UploadService = require('./services/upload.service');
 const UserService = require('./services/user.service');
+const LiveKitService = require('./services/livekit.service');
 
 // ── Handler Classes ──────────────────────────────────────────────────────────
 const ChatHandler = require('./socket/handlers/chat.handler');
@@ -35,6 +36,7 @@ const PresenceHandler = require('./socket/handlers/presence.handler');
 const ReactionHandler = require('./socket/handlers/reaction.handler');
 const ReadReceiptHandler = require('./socket/handlers/readReceipt.handler');
 const TypingHandler = require('./socket/handlers/typing.handler');
+const CallHandler = require('./socket/handlers/call.handler');
 
 // ── Service Instances ─────────────────────────────────────────────────────────
 
@@ -63,6 +65,8 @@ const userService = new UserService({
 
 const schedulerService = new SchedulerService({ Message, Room, getRedisClient, getIO });
 
+const livekitService = new LiveKitService();
+
 // ── Handler Instances ─────────────────────────────────────────────────────────
 
 const chatHandler = new ChatHandler({ notificationService, messageService });
@@ -71,6 +75,7 @@ const presenceHandler = new PresenceHandler({ presenceService, getRedisClient })
 const reactionHandler = new ReactionHandler({ messageService });
 const readReceiptHandler = new ReadReceiptHandler({ messageService });
 const typingHandler = new TypingHandler({ presenceService });
+const callHandler = new CallHandler({ getRedisClient, livekitService });
 
 // ── Export ─────────────────────────────────────────────────────────────────────
 
@@ -92,5 +97,6 @@ module.exports = {
   reactionHandler,
   readReceiptHandler,
   typingHandler,
+  callHandler,
 };
 

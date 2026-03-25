@@ -74,9 +74,29 @@ export const useChatStore = create((set, get) => ({
   },
 
   markMessagesRead: (messageId, readBy) => {
-    get().updateMessage(messageId, (msg) => ({
-      readBy: [...(msg.readBy || []), readBy],
-    }));
+    set((state) => {
+      const newMessages = { ...state.messages };
+      for (const roomId in newMessages) {
+        const idx = newMessages[roomId].findIndex((m) => m._id === messageId);
+        if (idx !== -1) {
+          const arr = [...newMessages[roomId]];
+          const msg = arr[idx];
+          const readUserId = String(readBy.user || readBy.userId);
+          const alreadyRead = (msg.readBy || []).some(
+            (r) => String(r.user || r.userId) === readUserId
+          );
+          if (!alreadyRead) {
+            arr[idx] = {
+              ...msg,
+              readBy: [...(msg.readBy || []), { user: readUserId, readAt: readBy.readAt }],
+            };
+            newMessages[roomId] = arr;
+          }
+          break;
+        }
+      }
+      return { messages: newMessages };
+    });
   },
 
   setTyping: (roomId, userId, username) => {

@@ -30,15 +30,6 @@ export default function ChatWindow() {
     loadMessages();
   }, [activeRoomId]);
 
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    if (currentMessages.length > 0) {
-      const last = currentMessages[currentMessages.length - 1];
-      if (last?.senderId?._id === user?._id || !pagination.hasLoaded) {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
-  }, [currentMessages.length]);
 
   async function loadRoom() {
     try {

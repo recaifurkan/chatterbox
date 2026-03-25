@@ -8,10 +8,10 @@ let io = null;
 
 /**
  * @param {import('http').Server} server
- * @param {{ chatHandler, dmHandler, presenceHandler, reactionHandler, readReceiptHandler, typingHandler }} handlers
+ * @param {{ chatHandler, dmHandler, presenceHandler, reactionHandler, readReceiptHandler, typingHandler, callHandler }} handlers
  */
 function initializeSocket(server, handlers) {
-  const { chatHandler, dmHandler, presenceHandler, reactionHandler, readReceiptHandler, typingHandler } = handlers;
+  const { chatHandler, dmHandler, presenceHandler, reactionHandler, readReceiptHandler, typingHandler, callHandler } = handlers;
   io = new Server(server, {
     cors: {
       origin: process.env.CLIENT_URL || 'http://localhost:3000',
@@ -65,6 +65,7 @@ function initializeSocket(server, handlers) {
     typingHandler.register(io, socket);
     reactionHandler.register(io, socket);
     readReceiptHandler.register(io, socket);
+    callHandler.register(io, socket);
 
     socket.on('disconnect', (reason) => {
       logger.info(`Socket ayrıldı: ${socket.id} | ${socket.user?.username} | Sebep: ${reason}`);

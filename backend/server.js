@@ -9,6 +9,7 @@ const {
   schedulerService,
   chatHandler, dmHandler, presenceHandler,
   reactionHandler, readReceiptHandler, typingHandler,
+  callHandler,
 } = require('./src/container');
 const logger = require('./src/utils/logger');
 
@@ -26,6 +27,7 @@ async function startServer() {
     initializeSocket(server, {
       chatHandler, dmHandler, presenceHandler,
       reactionHandler, readReceiptHandler, typingHandler,
+      callHandler,
     });
     schedulerService.startScheduler();
 

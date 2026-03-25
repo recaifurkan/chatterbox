@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import { useChatStore } from './chatStore';
 import { useNotificationStore } from './notificationStore';
 import { useAuthStore } from './authStore';
+import { useCallStore } from './callStore';
 import { SOCKET_EVENTS } from '../utils/constants';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '';
@@ -79,6 +80,23 @@ function registerEventHandlers(socket) {
   // New message in a room
   socket.on(SOCKET_EVENTS.NEW_MESSAGE, ({ message }) => {
     chat().addMessage(message.roomId, message);
+
+    // Aktif odadaysa ve kendi mesajımız değilse → otomatik okundu işaretle
+    const activeRoomId = useChatStore.getState().activeRoomId;
+    const currentUserId = useAuthStore.getState().user?._id;
+    const senderId = message.senderId?._id || message.senderId;
+
+    if (
+      activeRoomId &&
+      String(activeRoomId) === String(message.roomId) &&
+      String(senderId) !== String(currentUserId)
+    ) {
+      console.log('[Socket] Auto mark_read for message:', message._id);
+      socket.emit(SOCKET_EVENTS.MARK_READ, {
+        roomId: message.roomId,
+        messageIds: [message._id],
+      });
+    }
   });
 
   // Message edited
@@ -95,6 +113,23 @@ function registerEventHandlers(socket) {
   socket.on(SOCKET_EVENTS.NEW_DM, ({ room, message }) => {
     chat().addOrUpdateRoom(room);
     chat().addMessage(message.roomId, message);
+
+    // Aktif odadaysa ve kendi mesajımız değilse → otomatik okundu işaretle
+    const activeRoomId = useChatStore.getState().activeRoomId;
+    const currentUserId = useAuthStore.getState().user?._id;
+    const senderId = message.senderId?._id || message.senderId;
+
+    if (
+      activeRoomId &&
+      String(activeRoomId) === String(message.roomId) &&
+      String(senderId) !== String(currentUserId)
+    ) {
+      console.log('[Socket] Auto mark_read for DM:', message._id);
+      socket.emit(SOCKET_EVENTS.MARK_READ, {
+        roomId: message.roomId,
+        messageIds: [message._id],
+      });
+    }
   });
 
   // Typing indicators
@@ -118,6 +153,7 @@ function registerEventHandlers(socket) {
 
   // Read receipts
   socket.on(SOCKET_EVENTS.MESSAGES_READ, ({ messageIds, readBy }) => {
+    console.log('[Socket] MESSAGES_READ received:', { messageIds, readBy });
     messageIds.forEach((id) => chat().markMessagesRead(id, readBy));
   });
 
@@ -141,6 +177,39 @@ function registerEventHandlers(socket) {
 
   socket.on(SOCKET_EVENTS.USER_LEFT_ROOM, ({ roomId, userId }) => {
     chat().removeMemberFromRoom(roomId, userId);
+  });
+
+  // ── Call events ───────────────────────────────────────────────────────
+  const call = () => useCallStore.getState();
+
+  // Arayan: sunucu onayı — callId alır
+  socket.on(SOCKET_EVENTS.CALL_INITIATE, ({ callId }) => {
+    useCallStore.setState({ callId });
+  });
+
+  // Gelen arama
+  socket.on(SOCKET_EVENTS.CALL_INCOMING, (data) => {
+    call().handleIncomingCall(data);
+  });
+
+  // Arama kabul edildi — LiveKit serverId + token ile
+  socket.on(SOCKET_EVENTS.CALL_ACCEPT, ({ callId, userId, livekitServerId, livekitToken }) => {
+    call().handleCallAccepted({ callId, userId, livekitServerId, livekitToken });
+  });
+
+  // Karşı taraf reddetti
+  socket.on(SOCKET_EVENTS.CALL_REJECT, () => {
+    call().handleCallRejected();
+  });
+
+  // Arama sonlandırıldı
+  socket.on(SOCKET_EVENTS.CALL_END, () => {
+    call().handleCallEnded();
+  });
+
+  // Meşgul
+  socket.on(SOCKET_EVENTS.CALL_BUSY, () => {
+    call().handleCallBusy();
   });
 }
 

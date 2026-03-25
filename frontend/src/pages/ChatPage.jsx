@@ -12,6 +12,8 @@ import InviteModal from '../components/Rooms/InviteModal';
 import UserProfileModal from '../components/User/UserProfileModal';
 import SearchPanel from '../components/Chat/SearchPanel';
 import NotificationBell from '../components/Notifications/NotificationBell';
+import IncomingCallModal from '../components/Call/IncomingCallModal';
+import CallView from '../components/Call/CallView';
 import toast from 'react-hot-toast';
 
 export default function ChatPage() {
@@ -87,6 +89,10 @@ export default function ChatPage() {
       {activeModal === 'invite'      && activeRoom && <InviteModal room={activeRoom} onClose={closeModal} />}
       {activeModal === 'userProfile' && <UserProfileModal onClose={closeModal} />}
       {activeModal === 'search'      && <SearchPanel onClose={closeModal} />}
+
+      {/* Call overlays */}
+      <IncomingCallModal />
+      <CallView />
     </div>
   );
 }

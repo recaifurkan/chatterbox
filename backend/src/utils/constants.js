@@ -45,6 +45,14 @@ const SOCKET_EVENTS = {
   // Notifications
   NEW_NOTIFICATION: 'new_notification',
 
+  // Calls (LiveKit signaling — sinyal yalnızca Socket.IO üzerinden)
+  CALL_INITIATE: 'call_initiate',
+  CALL_INCOMING: 'call_incoming',
+  CALL_ACCEPT: 'call_accept',
+  CALL_REJECT: 'call_reject',
+  CALL_END: 'call_end',
+  CALL_BUSY: 'call_busy',
+
   // Errors
   ERROR: 'error',
 };
@@ -96,6 +104,8 @@ const REDIS_KEYS = {
   TYPING: (roomId, userId) => `typing:${roomId}:${userId}`,
   ROOM_MESSAGES_CACHE: (roomId) => `room:messages:${roomId}`,
   USER_SOCKET: (userId) => `socket:user:${userId}`,
+  CALL_ACTIVE: (callId) => `call:active:${callId}`,
+  CALL_USER: (userId) => `call:user:${userId}`,
 };
 
 module.exports = {
