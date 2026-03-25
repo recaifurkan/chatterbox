@@ -4,9 +4,8 @@
 const { setTestEnv, createUser, connectDB, disconnectDB, clearDB } = require('../../helpers/setup');
 
 let mockRedisClient;
-jest.mock('../../../src/config/redis', () => ({
-  getRedisClient: () => mockRedisClient,
-}));
+
+const PresenceService = require('../../../src/services/presence.service');
 
 function buildSocket(user) {
   const handlers = {};
@@ -38,15 +37,18 @@ afterEach(async () => {
   jest.clearAllMocks();
 });
 
-const { registerTypingHandlers } = require('../../../src/socket/handlers/typing.handler');
+const TypingHandler = require('../../../src/socket/handlers/typing.handler');
 const { SOCKET_EVENTS } = require('../../../src/utils/constants');
+
+const presenceService = new PresenceService({ getRedisClient: () => mockRedisClient });
+const typingHandler = new TypingHandler({ presenceService });
 
 describe('typing.handler', () => {
   it('TYPING_START sets typing in Redis and broadcasts', async () => {
     const user = await createUser();
     const io = buildIO();
     const socket = buildSocket(user);
-    registerTypingHandlers(io, socket);
+    typingHandler.register(io, socket);
 
     await socket._handlers[SOCKET_EVENTS.TYPING_START]({ roomId: 'room123' });
 
@@ -59,7 +61,7 @@ describe('typing.handler', () => {
     const user = await createUser();
     const io = buildIO();
     const socket = buildSocket(user);
-    registerTypingHandlers(io, socket);
+    typingHandler.register(io, socket);
 
     await socket._handlers[SOCKET_EVENTS.TYPING_START]({ roomId: 'room123' });
     await socket._handlers[SOCKET_EVENTS.TYPING_STOP]({ roomId: 'room123' });
@@ -72,7 +74,7 @@ describe('typing.handler', () => {
     const user = await createUser();
     const io = buildIO();
     const socket = buildSocket(user);
-    registerTypingHandlers(io, socket);
+    typingHandler.register(io, socket);
 
     await socket._handlers[SOCKET_EVENTS.TYPING_START]({ roomId: 'room456' });
     // Should not throw

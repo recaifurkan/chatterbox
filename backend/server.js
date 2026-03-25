@@ -5,7 +5,11 @@ const { connectDB } = require('./src/config/database');
 const { connectRedis } = require('./src/config/redis');
 const { initializeSocket } = require('./src/config/socket');
 const { initMinIO } = require('./src/config/minio');
-const { schedulerService } = require('./src/container');
+const {
+  schedulerService,
+  chatHandler, dmHandler, presenceHandler,
+  reactionHandler, readReceiptHandler, typingHandler,
+} = require('./src/container');
 const logger = require('./src/utils/logger');
 
 const PORT = process.env.PORT || 5000;
@@ -19,7 +23,10 @@ async function startServer() {
     await initMinIO();
 
     const server = http.createServer(app);
-    initializeSocket(server);
+    initializeSocket(server, {
+      chatHandler, dmHandler, presenceHandler,
+      reactionHandler, readReceiptHandler, typingHandler,
+    });
     schedulerService.startScheduler();
 
     server.listen(PORT, () => {

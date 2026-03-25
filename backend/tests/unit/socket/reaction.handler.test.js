@@ -18,6 +18,11 @@ jest.mock('../../../src/config/minio', () => ({
   minioClient: {}, BUCKET: 'test', ensureBucket: jest.fn().mockResolvedValue(undefined),
 }));
 
+// Real messageService from container (backed by real DB, mocked infra)
+const { messageService } = require('../../../src/container');
+const ReactionHandler = require('../../../src/socket/handlers/reaction.handler');
+const reactionHandler = new ReactionHandler({ messageService });
+
 let mockIO;
 
 function buildSocket(user) {
@@ -37,8 +42,7 @@ function buildIO() {
 function registerAndGetHandlers(io, socket) {
   const handlers = {};
   socket.on = (event, handler) => { handlers[event] = handler; };
-  const { registerReactionHandlers } = require('../../../src/socket/handlers/reaction.handler');
-  registerReactionHandlers(io, socket);
+  reactionHandler.register(io, socket);
   return handlers;
 }
 

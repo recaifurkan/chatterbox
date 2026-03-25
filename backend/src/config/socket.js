@@ -2,17 +2,16 @@ const { Server } = require('socket.io');
 const { createAdapter } = require('@socket.io/redis-adapter');
 const { getRedisPubSub } = require('./redis');
 const { socketAuthMiddleware } = require('../middlewares/socketAuth.middleware');
-const { registerChatHandlers } = require('../socket/handlers/chat.handler');
-const { registerTypingHandlers } = require('../socket/handlers/typing.handler');
-const { registerPresenceHandlers } = require('../socket/handlers/presence.handler');
-const { registerReactionHandlers } = require('../socket/handlers/reaction.handler');
-const { registerReadReceiptHandlers } = require('../socket/handlers/readReceipt.handler');
-const { registerDMHandlers } = require('../socket/handlers/dm.handler');
 const logger = require('../utils/logger');
 
 let io = null;
 
-function initializeSocket(server) {
+/**
+ * @param {import('http').Server} server
+ * @param {{ chatHandler, dmHandler, presenceHandler, reactionHandler, readReceiptHandler, typingHandler }} handlers
+ */
+function initializeSocket(server, handlers) {
+  const { chatHandler, dmHandler, presenceHandler, reactionHandler, readReceiptHandler, typingHandler } = handlers;
   io = new Server(server, {
     cors: {
       origin: process.env.CLIENT_URL || 'http://localhost:3000',
@@ -60,12 +59,12 @@ function initializeSocket(server) {
   io.on('connection', (socket) => {
     logger.info(`Socket bağlandı: ${socket.id} | User: ${socket.user.username} | Instance: ${process.env.INSTANCE_ID || 'default'}`);
 
-    registerPresenceHandlers(io, socket);
-    registerChatHandlers(io, socket);
-    registerDMHandlers(io, socket);
-    registerTypingHandlers(io, socket);
-    registerReactionHandlers(io, socket);
-    registerReadReceiptHandlers(io, socket);
+    presenceHandler.register(io, socket);
+    chatHandler.register(io, socket);
+    dmHandler.register(io, socket);
+    typingHandler.register(io, socket);
+    reactionHandler.register(io, socket);
+    readReceiptHandler.register(io, socket);
 
     socket.on('disconnect', (reason) => {
       logger.info(`Socket ayrıldı: ${socket.id} | ${socket.user?.username} | Sebep: ${reason}`);

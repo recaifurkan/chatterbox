@@ -1,30 +1,35 @@
 const { SOCKET_EVENTS } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
-function registerReadReceiptHandlers(io, socket) {
-  const { messageService } = require('../../container');
+class ReadReceiptHandler {
+  constructor({ messageService }) {
+    this.messageService = messageService;
+  }
 
-  socket.on(SOCKET_EVENTS.MARK_READ, async ({ roomId, messageIds }) => {
-    try {
-      if (!messageIds || !messageIds.length) return;
+  register(io, socket) {
+    const { messageService } = this;
 
-      await messageService.markRead(roomId, messageIds, socket.userId);
+    socket.on(SOCKET_EVENTS.MARK_READ, async ({ roomId, messageIds }) => {
+      try {
+        if (!messageIds || !messageIds.length) return;
 
-      // Notify the senders
-      io.to(`room:${roomId}`).emit(SOCKET_EVENTS.MESSAGES_READ, {
-        roomId,
-        messageIds,
-        readBy: {
-          userId: socket.userId,
-          username: socket.user.username,
-          readAt: new Date(),
-        },
-      });
-    } catch (error) {
-      logger.error('MARK_READ error:', error);
-    }
-  });
+        await messageService.markRead(roomId, messageIds, socket.userId);
+
+        io.to(`room:${roomId}`).emit(SOCKET_EVENTS.MESSAGES_READ, {
+          roomId,
+          messageIds,
+          readBy: {
+            userId: socket.userId,
+            username: socket.user.username,
+            readAt: new Date(),
+          },
+        });
+      } catch (error) {
+        logger.error('MARK_READ error:', error);
+      }
+    });
+  }
 }
 
-module.exports = { registerReadReceiptHandlers };
+module.exports = ReadReceiptHandler;
 

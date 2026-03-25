@@ -4,22 +4,6 @@
 const mongoose = require('mongoose');
 const { connectDB, disconnectDB, clearDB, setTestEnv, createUser, createRoom, createMessage } = require('../../helpers/setup');
 
-jest.mock('../../../src/config/socket', () => ({
-  getIO: () => mockIO,
-}));
-jest.mock('../../../src/config/redis', () => ({
-  getRedisClient: jest.fn(),
-  connectRedis: jest.fn().mockResolvedValue(undefined),
-}));
-jest.mock('../../../src/config/minio', () => ({
-  uploadBuffer: jest.fn(),
-  deleteObject: jest.fn(),
-  extractObjectName: jest.fn(),
-  minioClient: {},
-  BUCKET: 'test',
-  ensureBucket: jest.fn().mockResolvedValue(undefined),
-}));
-
 const mockNotificationService = {
   createNotification: jest.fn().mockResolvedValue(undefined),
   createMentionNotifications: jest.fn().mockResolvedValue(undefined),
@@ -29,11 +13,6 @@ const mockMessageServiceForSocket = {
   editMessage: jest.fn(),
   deleteMessage: jest.fn(),
 };
-
-jest.mock('../../../src/container', () => ({
-  notificationService: mockNotificationService,
-  messageService: mockMessageServiceForSocket,
-}));
 
 let mockIO;
 
@@ -65,25 +44,21 @@ afterEach(async () => {
   jest.clearAllMocks();
 });
 
-// Import after mocks are set up
-const { registerChatHandlers } = require('../../../src/socket/handlers/chat.handler');
+const ChatHandler = require('../../../src/socket/handlers/chat.handler');
 const { SOCKET_EVENTS } = require('../../../src/utils/constants');
 
-function getHandler(socket, io, event) {
-  registerChatHandlers(io, socket);
-  // Manually invoke the registered handler by calling socket.on's second arg
-  // We track calls to socket.on via spy
-  return null; // handlers are registered via socket.on callbacks
-}
+const chatHandler = new ChatHandler({
+  notificationService: mockNotificationService,
+  messageService: mockMessageServiceForSocket,
+});
 
-// We test by simulating socket.on registrations
 function registerAndGetHandlers(io, socket) {
   const handlers = {};
   const origOn = socket.on;
   socket.on = (event, handler) => {
     handlers[event] = handler;
   };
-  registerChatHandlers(io, socket);
+  chatHandler.register(io, socket);
   socket.on = origOn;
   return handlers;
 }

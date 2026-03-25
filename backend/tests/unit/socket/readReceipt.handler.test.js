@@ -4,6 +4,24 @@
 const mongoose = require('mongoose');
 const { connectDB, disconnectDB, clearDB, setTestEnv, createUser, createRoom, createMessage } = require('../../helpers/setup');
 
+// Mock infrastructure so container loads successfully
+jest.mock('../../../src/config/redis', () => ({
+  getRedisClient: jest.fn(),
+  connectRedis: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('../../../src/config/socket', () => ({
+  getIO: jest.fn(),
+  initializeSocket: jest.fn(),
+}));
+jest.mock('../../../src/config/minio', () => ({
+  uploadBuffer: jest.fn(), deleteObject: jest.fn(), extractObjectName: jest.fn(),
+  minioClient: {}, BUCKET: 'test', ensureBucket: jest.fn().mockResolvedValue(undefined),
+}));
+
+const { messageService } = require('../../../src/container');
+const ReadReceiptHandler = require('../../../src/socket/handlers/readReceipt.handler');
+const readReceiptHandler = new ReadReceiptHandler({ messageService });
+
 function buildSocket(user) {
   const handlers = {};
   return {
@@ -27,7 +45,6 @@ beforeAll(async () => {
 afterAll(async () => { await disconnectDB(); });
 afterEach(async () => { await clearDB(); jest.clearAllMocks(); });
 
-const { registerReadReceiptHandlers } = require('../../../src/socket/handlers/readReceipt.handler');
 const { SOCKET_EVENTS } = require('../../../src/utils/constants');
 const Message = require('../../../src/models/Message');
 
@@ -38,7 +55,7 @@ describe('readReceipt.handler - mark_read', () => {
     const msg = await createMessage(room._id, user._id);
     const io = buildIO();
     const socket = buildSocket(user);
-    registerReadReceiptHandlers(io, socket);
+    readReceiptHandler.register(io, socket);
 
     await socket._handlers[SOCKET_EVENTS.MARK_READ]({
       roomId: room._id.toString(),
@@ -55,7 +72,7 @@ describe('readReceipt.handler - mark_read', () => {
     const room = await createRoom(user._id);
     const io = buildIO();
     const socket = buildSocket(user);
-    registerReadReceiptHandlers(io, socket);
+    readReceiptHandler.register(io, socket);
 
     await socket._handlers[SOCKET_EVENTS.MARK_READ]({
       roomId: room._id.toString(),

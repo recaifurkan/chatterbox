@@ -4,31 +4,9 @@
 const mongoose = require('mongoose');
 const { connectDB, disconnectDB, clearDB, setTestEnv, createUser } = require('../../helpers/setup');
 
-jest.mock('../../../src/config/redis', () => ({
-  getRedisClient: jest.fn(),
-  connectRedis: jest.fn().mockResolvedValue(undefined),
-}));
-jest.mock('../../../src/config/socket', () => ({
-  getIO: jest.fn(),
-  initSocket: jest.fn(),
-}));
-jest.mock('../../../src/config/minio', () => ({
-  uploadBuffer: jest.fn(),
-  deleteObject: jest.fn(),
-  extractObjectName: jest.fn(),
-  minioClient: {},
-  BUCKET: 'test',
-  ensureBucket: jest.fn().mockResolvedValue(undefined),
-}));
-
 const mockNotificationService = {
   createNotification: jest.fn().mockResolvedValue({}),
-  createMentionNotifications: jest.fn().mockResolvedValue(undefined),
 };
-
-jest.mock('../../../src/container', () => ({
-  notificationService: mockNotificationService,
-}));
 
 function buildSocket(user) {
   const handlers = {};
@@ -54,8 +32,10 @@ beforeAll(async () => {
 afterAll(async () => { await disconnectDB(); });
 afterEach(async () => { await clearDB(); jest.clearAllMocks(); });
 
-const { registerDMHandlers } = require('../../../src/socket/handlers/dm.handler');
+const DMHandler = require('../../../src/socket/handlers/dm.handler');
 const { SOCKET_EVENTS } = require('../../../src/utils/constants');
+
+const dmHandler = new DMHandler({ notificationService: mockNotificationService });
 
 describe('dm.handler - send_dm', () => {
   it('creates a DM room and message, emits to both users', async () => {
@@ -63,7 +43,7 @@ describe('dm.handler - send_dm', () => {
     const receiver = await createUser();
     const io = buildIO();
     const socket = buildSocket(sender);
-    registerDMHandlers(io, socket);
+    dmHandler.register(io, socket);
 
     await socket._handlers[SOCKET_EVENTS.SEND_DM]({
       targetUserId: receiver._id.toString(),
@@ -79,7 +59,7 @@ describe('dm.handler - send_dm', () => {
     const user = await createUser();
     const io = buildIO();
     const socket = buildSocket(user);
-    registerDMHandlers(io, socket);
+    dmHandler.register(io, socket);
 
     await socket._handlers[SOCKET_EVENTS.SEND_DM]({
       targetUserId: user._id.toString(),
@@ -93,7 +73,7 @@ describe('dm.handler - send_dm', () => {
     const user = await createUser();
     const io = buildIO();
     const socket = buildSocket(user);
-    registerDMHandlers(io, socket);
+    dmHandler.register(io, socket);
 
     await socket._handlers[SOCKET_EVENTS.SEND_DM]({
       targetUserId: new mongoose.Types.ObjectId().toString(),
@@ -113,7 +93,7 @@ describe('dm.handler - send_dm', () => {
 
     const io = buildIO();
     const socket = buildSocket(sender);
-    registerDMHandlers(io, socket);
+    dmHandler.register(io, socket);
 
     await socket._handlers[SOCKET_EVENTS.SEND_DM]({
       targetUserId: updatedBlocker._id.toString(),
@@ -128,7 +108,7 @@ describe('dm.handler - send_dm', () => {
     const receiver = await createUser();
     const io = buildIO();
     const socket = buildSocket(sender);
-    registerDMHandlers(io, socket);
+    dmHandler.register(io, socket);
 
     // Create DM twice — second time should reuse existing room
     await socket._handlers[SOCKET_EVENTS.SEND_DM]({ targetUserId: receiver._id.toString(), content: 'First' });
