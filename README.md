@@ -211,10 +211,10 @@ npm run dev            # http://localhost:3000
 
 The `docker-compose.yml` includes a built-in **ngrok** service that creates a public HTTPS tunnel pointing to the Nginx container. This is useful for:
 
-- 📱 Testing the app from a mobile device outside your local network
-- 🔗 Sharing a live demo link with others
-- 🪝 Receiving webhooks from external services
-- 🧪 Testing HTTPS-only browser features (e.g., Notification API, clipboard)
+- Testing the app from a mobile device outside your local network
+- Sharing a live demo link with others
+- Receiving webhooks from external services
+- Testing HTTPS-only browser features (e.g., Notification API, clipboard)
 
 ### Setup
 
