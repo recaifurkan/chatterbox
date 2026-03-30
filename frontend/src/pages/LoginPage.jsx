@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const [form, setForm] = useState({ email: '', password: '' });
   const { login, loading } = useAuthStore();
   const navigate = useNavigate();
@@ -30,15 +32,16 @@ export default function LoginPage() {
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-white">Chatterbox</h1>
-          <p className="text-gray-400 mt-1">Hesabınıza giriş yapın</p>
+          <p className="text-gray-400 mt-1">{t('login')}</p>
         </div>
 
         {/* Card */}
         <div className="bg-gray-800 rounded-2xl p-8 shadow-xl border border-gray-700">
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">E-posta</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1.5">E-posta</label>
               <input
+                id="email"
                 type="email"
                 className="input-field"
                 placeholder="you@example.com"
@@ -48,8 +51,9 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Şifre</label>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1.5">Şifre</label>
               <input
+                id="password"
                 type="password"
                 className="input-field"
                 placeholder="••••••••"
@@ -69,16 +73,16 @@ export default function LoginPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Giriş yapılıyor...
+                  {t('login')}...
                 </span>
-              ) : 'Giriş Yap'}
+              ) : t('login')}
             </button>
           </form>
 
           <p className="text-center text-gray-400 mt-6 text-sm">
-            Hesabınız yok mu?{' '}
+            {t('register')}?{' '}
             <Link to="/register" className="text-blue-400 hover:text-blue-300 font-medium">
-              Kayıt olun
+              {t('register')}
             </Link>
           </p>
         </div>
@@ -86,4 +90,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

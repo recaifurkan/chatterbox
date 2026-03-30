@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '' });
   const { register, loading } = useAuthStore();
   const navigate = useNavigate();
@@ -32,14 +34,15 @@ export default function RegisterPage() {
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-white">Chatterbox</h1>
-          <p className="text-gray-400 mt-1">Yeni hesap oluşturun</p>
+          <p className="text-gray-400 mt-1">{t('register')}</p>
         </div>
 
         <div className="bg-gray-800 rounded-2xl p-8 shadow-xl border border-gray-700">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Kullanıcı Adı</label>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-1.5">{t('username') || 'Kullanıcı Adı'}</label>
               <input
+                id="username"
                 type="text"
                 className="input-field"
                 placeholder="johndoe"
@@ -53,8 +56,9 @@ export default function RegisterPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">E-posta</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1.5">E-posta</label>
               <input
+                id="email"
                 type="email"
                 className="input-field"
                 placeholder="you@example.com"
@@ -64,8 +68,9 @@ export default function RegisterPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Şifre</label>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1.5">{t('password') || 'Şifre'}</label>
               <input
+                id="password"
                 type="password"
                 className="input-field"
                 placeholder="En az 6 karakter"
@@ -76,8 +81,9 @@ export default function RegisterPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Şifre Tekrar</label>
+              <label htmlFor="confirm" className="block text-sm font-medium text-gray-300 mb-1.5">{t('confirm_password') || 'Şifre Tekrar'}</label>
               <input
+                id="confirm"
                 type="password"
                 className="input-field"
                 placeholder="Şifreyi tekrarlayın"
@@ -97,16 +103,16 @@ export default function RegisterPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Hesap oluşturuluyor...
+                  {t('register')}...
                 </span>
-              ) : 'Kayıt Ol'}
+              ) : t('register')}
             </button>
           </form>
 
           <p className="text-center text-gray-400 mt-6 text-sm">
-            Zaten hesabınız var mı?{' '}
+            {t('login')}?{' '}
             <Link to="/login" className="text-blue-400 hover:text-blue-300 font-medium">
-              Giriş yapın
+              {t('login')}
             </Link>
           </p>
         </div>
@@ -114,4 +120,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-

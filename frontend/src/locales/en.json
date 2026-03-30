@@ -1,0 +1,11 @@
+{
+  "welcome": "Welcome to Chatterbox!",
+  "login": "Login",
+  "register": "Register",
+  "logout": "Logout",
+  "language": "Language",
+  "send": "Send",
+  "search": "Search",
+  "type_message": "Type a message..."
+}
+

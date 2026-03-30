@@ -30,11 +30,14 @@ export default function App() {
   }, [user, accessToken]);
 
   return (
-    <Routes>
-      <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
-      <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
-      <Route path="/*" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-    </Routes>
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-1">
+        <Routes>
+          <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+          <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+          <Route path="/*" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+        </Routes>
+      </div>
+    </div>
   );
 }
-
