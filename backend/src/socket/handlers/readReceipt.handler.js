@@ -1,4 +1,4 @@
-const { SOCKET_EVENTS } = require('../../utils/constants');
+const { SOCKET_EVENTS, ROOM_KEY } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
 class ReadReceiptHandler {
@@ -17,7 +17,7 @@ class ReadReceiptHandler {
 
         await messageService.markRead(roomId, messageIds, socket.userId);
 
-        io.to(`room:${roomId}`).emit(SOCKET_EVENTS.MESSAGES_READ, {
+        io.to(ROOM_KEY(roomId)).emit(SOCKET_EVENTS.MESSAGES_READ, {
           roomId,
           messageIds,
           readBy: {
@@ -36,4 +36,3 @@ class ReadReceiptHandler {
 }
 
 module.exports = ReadReceiptHandler;
-

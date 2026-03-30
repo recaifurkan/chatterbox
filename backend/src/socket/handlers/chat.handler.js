@@ -1,7 +1,7 @@
 const Message = require('../../models/Message');
 const Room = require('../../models/Room');
 const User = require('../../models/User');
-const { SOCKET_EVENTS, MESSAGE_TYPES, ROOM_TYPES } = require('../../utils/constants');
+const { SOCKET_EVENTS, MESSAGE_TYPES, ROOM_TYPES, ROOM_KEY, USER_KEY } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
 class ChatHandler {
@@ -22,10 +22,10 @@ class ChatHandler {
           return socket.emit(SOCKET_EVENTS.ERROR, { message: 'Not a member of this room' });
         }
 
-        socket.join(`room:${roomId}`);
+        socket.join(ROOM_KEY(roomId));
         socket.emit(SOCKET_EVENTS.ROOM_JOINED, { roomId });
 
-        socket.to(`room:${roomId}`).emit(SOCKET_EVENTS.USER_JOINED_ROOM, {
+        socket.to(ROOM_KEY(roomId)).emit(SOCKET_EVENTS.USER_JOINED_ROOM, {
           roomId,
           user: { _id: socket.user._id, username: socket.user.username, avatarUrl: socket.user.avatarUrl },
         });
@@ -38,9 +38,9 @@ class ChatHandler {
     });
 
     socket.on(SOCKET_EVENTS.LEAVE_ROOM, ({ roomId }) => {
-      socket.leave(`room:${roomId}`);
+      socket.leave(ROOM_KEY(roomId));
       socket.emit(SOCKET_EVENTS.ROOM_LEFT, { roomId });
-      socket.to(`room:${roomId}`).emit(SOCKET_EVENTS.USER_LEFT_ROOM, {
+      socket.to(ROOM_KEY(roomId)).emit(SOCKET_EVENTS.USER_LEFT_ROOM, {
         roomId,
         userId: socket.userId,
       });
@@ -96,7 +96,7 @@ class ChatHandler {
           lastActivity: new Date(),
         });
 
-        io.to(`room:${roomId}`).emit(SOCKET_EVENTS.NEW_MESSAGE, { message });
+        io.to(ROOM_KEY(roomId)).emit(SOCKET_EVENTS.NEW_MESSAGE, { message });
 
         if (mentions.length) {
           try {
@@ -109,14 +109,14 @@ class ChatHandler {
         try {
           if (room.type !== ROOM_TYPES.DM) {
             const mentionSet = new Set(mentions.map((m) => m.toString()));
-            const socketRoom = io.sockets.adapter.rooms.get(`room:${roomId}`);
+            const socketRoom = io.sockets.adapter.rooms.get(ROOM_KEY(roomId));
 
             for (const member of room.members) {
               const memberId = (member.user?._id || member.user).toString();
               if (memberId === socket.userId) continue;
               if (mentionSet.has(memberId)) continue;
 
-              const memberSocketId = await io.in(`user:${memberId}`).allSockets();
+              const memberSocketId = await io.in(USER_KEY(memberId)).allSockets();
               const isInRoom = memberSocketId.size > 0 && socketRoom &&
                 [...memberSocketId].some((sid) => socketRoom.has(sid));
               if (isInRoom) continue;
@@ -146,7 +146,7 @@ class ChatHandler {
     socket.on(SOCKET_EVENTS.EDIT_MESSAGE, async ({ messageId, content }) => {
       try {
         const { message } = await messageService.editMessage(messageId, socket.userId, content);
-        io.to(`room:${message.roomId}`).emit(SOCKET_EVENTS.MESSAGE_EDITED, {
+        io.to(ROOM_KEY(message.roomId)).emit(SOCKET_EVENTS.MESSAGE_EDITED, {
           messageId,
           content,
           isEdited: true,
@@ -160,7 +160,7 @@ class ChatHandler {
     socket.on(SOCKET_EVENTS.DELETE_MESSAGE, async ({ messageId }) => {
       try {
         const result = await messageService.deleteMessage(messageId, socket.userId);
-        io.to(`room:${result.roomId}`).emit(SOCKET_EVENTS.MESSAGE_DELETED, { messageId });
+        io.to(ROOM_KEY(result.roomId)).emit(SOCKET_EVENTS.MESSAGE_DELETED, { messageId });
       } catch (error) {
         logger.error('DELETE_MESSAGE error:', error);
         socket.emit(SOCKET_EVENTS.ERROR, { message: error.message || 'Failed to delete message' });

@@ -1,7 +1,7 @@
 const Room = require('../../models/Room');
 const Message = require('../../models/Message');
 const User = require('../../models/User');
-const { SOCKET_EVENTS, ROOM_TYPES, ROOM_ROLES, MESSAGE_TYPES } = require('../../utils/constants');
+const { SOCKET_EVENTS, ROOM_TYPES, ROOM_ROLES, MESSAGE_TYPES, ROOM_KEY, USER_KEY } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
 class DMHandler {
@@ -60,10 +60,10 @@ class DMHandler {
 
         await room.populate('members.user', 'username avatarUrl status isOnline');
 
-        socket.join(`room:${room._id}`);
+        socket.join(ROOM_KEY(room._id));
 
-        io.to(`user:${socket.userId}`).emit(SOCKET_EVENTS.NEW_DM, { room, message });
-        io.to(`user:${targetUserId}`).emit(SOCKET_EVENTS.NEW_DM, { room, message });
+        io.to(USER_KEY(socket.userId)).emit(SOCKET_EVENTS.NEW_DM, { room, message });
+        io.to(USER_KEY(targetUserId)).emit(SOCKET_EVENTS.NEW_DM, { room, message });
 
         await notificationService.createNotification({
           userId: targetUserId,
@@ -84,4 +84,3 @@ class DMHandler {
 }
 
 module.exports = DMHandler;
-

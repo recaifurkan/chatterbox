@@ -1,5 +1,5 @@
 const Message = require('../../models/Message');
-const { SOCKET_EVENTS } = require('../../utils/constants');
+const { SOCKET_EVENTS, ROOM_KEY } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
 class ReactionHandler {
@@ -14,7 +14,7 @@ class ReactionHandler {
       try {
         const { reactions } = await messageService.addReaction(messageId, socket.userId, emoji);
 
-        io.to(`room:${(await Message.findById(messageId)).roomId}`).emit(SOCKET_EVENTS.REACTION_UPDATED, {
+        io.to(ROOM_KEY((await Message.findById(messageId)).roomId)).emit(SOCKET_EVENTS.REACTION_UPDATED, {
           messageId,
           reactions,
         });
@@ -27,7 +27,7 @@ class ReactionHandler {
       try {
         const { reactions } = await messageService.removeReaction(messageId, socket.userId, emoji);
 
-        io.to(`room:${(await Message.findById(messageId)).roomId}`).emit(SOCKET_EVENTS.REACTION_UPDATED, {
+        io.to(ROOM_KEY((await Message.findById(messageId)).roomId)).emit(SOCKET_EVENTS.REACTION_UPDATED, {
           messageId,
           reactions,
         });
@@ -39,4 +39,3 @@ class ReactionHandler {
 }
 
 module.exports = ReactionHandler;
-

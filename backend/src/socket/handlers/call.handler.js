@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-const { SOCKET_EVENTS, REDIS_KEYS } = require('../../utils/constants');
+const { SOCKET_EVENTS, REDIS_KEYS, USER_KEY } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
 /**
@@ -68,7 +68,7 @@ class CallHandler {
         await redis.setex(REDIS_KEYS.CALL_USER(targetUserId), 300, callId);
 
         // Hedef kullanıcıya gelen arama bildirimi
-        io.to(`user:${targetUserId}`).emit(SOCKET_EVENTS.CALL_INCOMING, {
+        io.to(USER_KEY(targetUserId)).emit(SOCKET_EVENTS.CALL_INCOMING, {
           callId,
           roomId,
           callType,
@@ -128,7 +128,7 @@ class CallHandler {
         );
 
         // Arayana bildir (serverId gönder — client kendi host'una göre URL oluşturur)
-        io.to(`user:${callData.callerId}`).emit(SOCKET_EVENTS.CALL_ACCEPT, {
+        io.to(USER_KEY(callData.callerId)).emit(SOCKET_EVENTS.CALL_ACCEPT, {
           callId,
           userId: socket.userId,
           username: socket.user.username,
@@ -167,7 +167,7 @@ class CallHandler {
         await redis.del(REDIS_KEYS.CALL_USER(callData.targetUserId));
 
         // Arayana bildir
-        io.to(`user:${callData.callerId}`).emit(SOCKET_EVENTS.CALL_REJECT, {
+        io.to(USER_KEY(callData.callerId)).emit(SOCKET_EVENTS.CALL_REJECT, {
           callId,
           userId: socket.userId,
         });
@@ -196,7 +196,7 @@ class CallHandler {
         const otherUserId =
           callData.callerId === socket.userId ? callData.targetUserId : callData.callerId;
 
-        io.to(`user:${otherUserId}`).emit(SOCKET_EVENTS.CALL_END, {
+        io.to(USER_KEY(otherUserId)).emit(SOCKET_EVENTS.CALL_END, {
           callId,
           endedBy: socket.userId,
         });
@@ -229,7 +229,7 @@ class CallHandler {
         const otherUserId =
           callData.callerId === socket.userId ? callData.targetUserId : callData.callerId;
 
-        io.to(`user:${otherUserId}`).emit(SOCKET_EVENTS.CALL_END, {
+        io.to(USER_KEY(otherUserId)).emit(SOCKET_EVENTS.CALL_END, {
           callId,
           endedBy: socket.userId,
           reason: 'disconnected',

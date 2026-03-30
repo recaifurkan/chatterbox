@@ -97,6 +97,11 @@ const ALLOWED_MIME_TYPES = {
   'text/plain': '.txt',
 };
 
+
+// Socket/Redis key helpers
+const ROOM_KEY = (roomId) => `room:${roomId}`;
+const USER_KEY = (userId) => `user:${userId}`;
+
 const REDIS_KEYS = {
   REFRESH_TOKEN: (userId) => `refresh:${userId}`,
   BLACKLISTED_TOKEN: (jti) => `blacklist:${jti}`,
@@ -116,5 +121,7 @@ module.exports = {
   ROOM_ROLES,
   ALLOWED_MIME_TYPES,
   REDIS_KEYS,
+  ROOM_KEY,
+  USER_KEY,
 };
 

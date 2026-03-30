@@ -1,4 +1,4 @@
-const { SOCKET_EVENTS } = require('../../utils/constants');
+const { SOCKET_EVENTS, ROOM_KEY } = require('../../utils/constants');
 
 class TypingHandler {
   constructor({ presenceService }) {
@@ -11,7 +11,7 @@ class TypingHandler {
 
     socket.on(SOCKET_EVENTS.TYPING_START, async ({ roomId }) => {
       await presenceService.setTyping(roomId, socket.userId, socket.user.username);
-      socket.to(`room:${roomId}`).emit(SOCKET_EVENTS.USER_TYPING, {
+      socket.to(ROOM_KEY(roomId)).emit(SOCKET_EVENTS.USER_TYPING, {
         userId: socket.userId,
         username: socket.user.username,
         roomId,
@@ -23,7 +23,7 @@ class TypingHandler {
         key,
         setTimeout(async () => {
           await presenceService.clearTyping(roomId, socket.userId);
-          socket.to(`room:${roomId}`).emit(SOCKET_EVENTS.USER_STOP_TYPING, {
+          socket.to(ROOM_KEY(roomId)).emit(SOCKET_EVENTS.USER_STOP_TYPING, {
             userId: socket.userId,
             roomId,
           });
@@ -39,7 +39,7 @@ class TypingHandler {
         typingTimeouts.delete(key);
       }
       await presenceService.clearTyping(roomId, socket.userId);
-      socket.to(`room:${roomId}`).emit(SOCKET_EVENTS.USER_STOP_TYPING, {
+      socket.to(ROOM_KEY(roomId)).emit(SOCKET_EVENTS.USER_STOP_TYPING, {
         userId: socket.userId,
         roomId,
       });
@@ -53,4 +53,3 @@ class TypingHandler {
 }
 
 module.exports = TypingHandler;
-

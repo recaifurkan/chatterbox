@@ -1,6 +1,6 @@
 const User = require('../../models/User');
 const Room = require('../../models/Room');
-const { SOCKET_EVENTS, USER_STATUS, REDIS_KEYS } = require('../../utils/constants');
+const { SOCKET_EVENTS, USER_STATUS, REDIS_KEYS, USER_KEY, ROOM_KEY } = require('../../utils/constants');
 const logger = require('../../utils/logger');
 
 class PresenceHandler {
@@ -13,7 +13,7 @@ class PresenceHandler {
     const { presenceService } = this;
     const redis = this.getRedisClient();
 
-    socket.join(`user:${socket.userId}`);
+    socket.join(USER_KEY(socket.userId));
 
     redis.setex(REDIS_KEYS.USER_SOCKET(socket.userId), 86400, socket.id).catch(() => {});
 
@@ -27,7 +27,7 @@ class PresenceHandler {
 
         const rooms = await Room.find({ 'members.user': socket.userId, isActive: true });
         for (const room of rooms) {
-          socket.join(`room:${room._id}`);
+          socket.join(ROOM_KEY(room._id));
         }
         logger.info(`${socket.user.username} ${rooms.length} odaya (yeniden) katıldı [${process.env.INSTANCE_ID || 'default'}]`);
 
@@ -81,4 +81,3 @@ class PresenceHandler {
 }
 
 module.exports = PresenceHandler;
-

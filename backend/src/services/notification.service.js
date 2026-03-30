@@ -1,4 +1,4 @@
-const { SOCKET_EVENTS } = require('../utils/constants');
+const { SOCKET_EVENTS, USER_KEY } = require('../utils/constants');
 const { NotFoundError } = require('../utils/AppError');
 const logger = require('../utils/logger');
 
@@ -27,7 +27,7 @@ class NotificationService {
     });
 
     const io = this.getIO();
-    const targetRoom = `user:${userId.toString()}`;
+    const targetRoom = USER_KEY(userId.toString());
     io.to(targetRoom).emit(SOCKET_EVENTS.NEW_NOTIFICATION, {
       notification: {
         _id: notification._id,
