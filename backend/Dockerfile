@@ -2,10 +2,9 @@ FROM node:20-alpine AS base
 
 WORKDIR /app
 
-# python3/make/g++ → native npm paketleri (sharp vb.)
-# libheif           → HEIC/HEIF desteği (iPhone fotoğrafları)
-# vips-dev          → sharp'ın ihtiyaç duyduğu libvips
-RUN apk add --no-cache python3 make g++ curl libheif vips-dev
+# python3/make/g++ → native npm paketleri
+# ffmpeg           → resim ve video işleme (çözünürlük düşürme, format dönüştürme)
+RUN apk add --no-cache python3 make g++ curl ffmpeg
 
 COPY package*.json ./
 RUN npm ci --only=production

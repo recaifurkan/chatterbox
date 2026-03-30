@@ -23,14 +23,14 @@ jest.mock('../../src/config/socket', () => ({
   getIO: () => ({ emit: jest.fn(), to: jest.fn(() => ({ emit: jest.fn() })) }),
   initSocket: jest.fn(),
 }));
-jest.mock('sharp', () => {
-  const chain = {
-    rotate: () => chain,
-    resize: () => chain,
-    jpeg: () => chain,
-    toBuffer: jest.fn().mockResolvedValue(Buffer.from('fake-image')),
-  };
-  return jest.fn(() => chain);
+jest.mock('../../src/services/media.service', () => {
+  return jest.fn().mockImplementation(() => ({
+    processAvatar: jest.fn().mockResolvedValue(Buffer.from('fake-image')),
+    processImage: jest.fn().mockResolvedValue(Buffer.from('fake-image')),
+    processVideo: jest.fn().mockResolvedValue(Buffer.from('fake-video')),
+    generateThumbnail: jest.fn().mockResolvedValue(Buffer.from('fake-thumb')),
+    probe: jest.fn().mockResolvedValue({}),
+  }));
 });
 
 const app = require('../../src/app');

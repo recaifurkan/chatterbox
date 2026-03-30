@@ -28,6 +28,7 @@ const SchedulerService = require('./services/scheduler.service');
 const UploadService = require('./services/upload.service');
 const UserService = require('./services/user.service');
 const LiveKitService = require('./services/livekit.service');
+const MediaService = require('./services/media.service');
 
 // ── Handler Classes ──────────────────────────────────────────────────────────
 const ChatHandler = require('./socket/handlers/chat.handler');
@@ -52,7 +53,9 @@ const messageService = new MessageService({ Message, Room, auditService });
 
 const roomService = new RoomService({ Room, User, Message });
 
-const uploadService = new UploadService({ uploadBuffer, minioClient, BUCKET });
+const mediaService = new MediaService();
+
+const uploadService = new UploadService({ uploadBuffer, minioClient, BUCKET, mediaService });
 
 const userService = new UserService({
   User,
@@ -61,6 +64,7 @@ const userService = new UserService({
   uploadBuffer,
   deleteObject,
   extractObjectName,
+  mediaService,
 });
 
 const schedulerService = new SchedulerService({ Message, Room, getRedisClient, getIO });

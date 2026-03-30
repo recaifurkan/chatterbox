@@ -35,6 +35,16 @@ jest.mock('../../src/config/socket', () => ({
   initSocket: jest.fn(),
 }));
 
+jest.mock('../../src/services/media.service', () => {
+  return jest.fn().mockImplementation(() => ({
+    processAvatar: jest.fn().mockResolvedValue(Buffer.from('fake-image')),
+    processImage: jest.fn().mockResolvedValue(Buffer.from('fake-image')),
+    processVideo: jest.fn().mockResolvedValue(Buffer.from('fake-video')),
+    generateThumbnail: jest.fn().mockResolvedValue(Buffer.from('fake-thumb')),
+    probe: jest.fn().mockResolvedValue({}),
+  }));
+});
+
 const app = require('../../src/app');
 
 beforeAll(async () => {

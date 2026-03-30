@@ -489,7 +489,7 @@ This means devices on the same Wi-Fi / LAN can access the app without any extra 
 | Cache / Broker | Redis 7 (ioredis, @socket.io/redis-adapter) |
 | File Storage | MinIO (S3-compatible, private bucket) |
 | Auth | JWT (jsonwebtoken), bcryptjs |
-| File Upload | Multer, Sharp (image processing) |
+| File Upload | Multer, FFmpeg (image/video processing via child_process) |
 | Logging | Winston + daily-rotate-file |
 | Scheduler | node-cron + Redis distributed lock |
 | Proxy | Nginx Alpine |

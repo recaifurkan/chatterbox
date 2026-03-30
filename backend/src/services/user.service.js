@@ -1,4 +1,3 @@
-const sharp = require('sharp');
 const { v4: uuidv4 } = require('uuid');
 const { SOCKET_EVENTS } = require('../utils/constants');
 const { BadRequestError, NotFoundError, ConflictError } = require('../utils/AppError');
@@ -11,16 +10,18 @@ class UserService {
    *   getIO: () => import('socket.io').Server,
    *   uploadBuffer: Function,
    *   deleteObject: Function,
-   *   extractObjectName: Function
+   *   extractObjectName: Function,
+   *   mediaService: import('./media.service')
    * }} deps
    */
-  constructor({ User, presenceService, getIO, uploadBuffer, deleteObject, extractObjectName }) {
+  constructor({ User, presenceService, getIO, uploadBuffer, deleteObject, extractObjectName, mediaService }) {
     this.User = User;
     this.presenceService = presenceService;
     this.getIO = getIO;
     this.uploadBuffer = uploadBuffer;
     this.deleteObject = deleteObject;
     this.extractObjectName = extractObjectName;
+    this.mediaService = mediaService;
   }
 
   async getProfile(userId) {
@@ -55,11 +56,7 @@ class UserService {
 
     let jpegBuffer;
     try {
-      jpegBuffer = await sharp(fileBuffer)
-        .rotate()
-        .resize(256, 256, { fit: 'cover', position: 'centre' })
-        .jpeg({ quality: 85, progressive: true })
-        .toBuffer();
+      jpegBuffer = await this.mediaService.processAvatar(fileBuffer, 256);
     } catch {
       throw new BadRequestError('Resim formatı desteklenmiyor. Lütfen JPEG, PNG, WebP veya HEIC kullanın.');
     }
