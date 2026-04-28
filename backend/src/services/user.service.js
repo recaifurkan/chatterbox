@@ -7,15 +7,15 @@ class UserService {
    * @param {{
    *   User: import('mongoose').Model,
    *   presenceService: import('./presence.service'),
-   *   getIO: () => import('socket.io').Server,
+   *   socketService: import('./socket.service'),
    *   filesystemService: import('./filesystem.service'),
    *   mediaService: import('./media.service')
    * }} deps
    */
-  constructor({ User, presenceService, getIO, filesystemService, mediaService }) {
+  constructor({ User, presenceService, socketService, filesystemService, mediaService }) {
     this.User = User;
     this.presenceService = presenceService;
-    this.getIO = getIO;
+    this.socketService = socketService;
     this.filesystemService = filesystemService;
     this.mediaService = mediaService;
   }
@@ -78,8 +78,7 @@ class UserService {
 
     const user = await this.User.findByIdAndUpdate(userId, updates, { new: true });
 
-    const io = this.getIO();
-    io.emit(SOCKET_EVENTS.USER_STATUS_CHANGE, {
+    this.socketService.emit(SOCKET_EVENTS.USER_STATUS_CHANGE, {
       userId: user._id,
       status: user.status,
       statusMessage: user.statusMessage,

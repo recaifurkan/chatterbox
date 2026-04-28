@@ -1,14 +1,14 @@
-const { SOCKET_EVENTS, USER_KEY } = require('../utils/constants');
+const { SOCKET_EVENTS } = require('../utils/constants');
 const { NotFoundError } = require('../utils/AppError');
 const logger = require('../utils/logger');
 
 class NotificationService {
   /**
-   * @param {{ Notification: import('mongoose').Model, getIO: () => import('socket.io').Server }} deps
+   * @param {{ Notification: import('mongoose').Model, socketService: import('./socket.service') }} deps
    */
-  constructor({ Notification, getIO }) {
+  constructor({ Notification, socketService }) {
     this.Notification = Notification;
-    this.getIO = getIO;
+    this.socketService = socketService;
   }
 
   /**
@@ -26,9 +26,8 @@ class NotificationService {
       messageId,
     });
 
-    const io = this.getIO();
-    const targetRoom = USER_KEY(userId.toString());
-    io.to(targetRoom).emit(SOCKET_EVENTS.NEW_NOTIFICATION, {
+    const io = this.socketService;
+    io.emitToUser(userId.toString(), SOCKET_EVENTS.NEW_NOTIFICATION, {
       notification: {
         _id: notification._id,
         userId: notification.userId,
@@ -43,7 +42,7 @@ class NotificationService {
         createdAt: notification.createdAt,
       },
     });
-    logger.info(`Notification emitted → ${targetRoom} | type:${type} | title:${title}`);
+    logger.info(`Notification emitted → user:${userId} | type:${type} | title:${title}`);
 
     return notification;
   }

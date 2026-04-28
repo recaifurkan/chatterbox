@@ -7,11 +7,11 @@ const LOCK_KEY = 'scheduler:lock';
 const LOCK_TTL = 55;
 
 class SchedulerService {
-  constructor({ Message, Room, redisService, getIO }) {
+  constructor({ Message, Room, redisService, socketService }) {
     this.Message = Message;
     this.Room = Room;
     this.redisService = redisService;
-    this.getIO = getIO;
+    this.socketService = socketService;
   }
 
   // ── CRUD (controller tarafından kullanılır) ─────────────────────────────
@@ -95,8 +95,7 @@ class SchedulerService {
               room.lastActivity = now;
               await room.save();
 
-              const io = this.getIO();
-              io.to(`room:${message.roomId}`).emit(SOCKET_EVENTS.NEW_MESSAGE, {
+              this.socketService.emitToRoom(message.roomId, SOCKET_EVENTS.NEW_MESSAGE, {
                 message: message.toObject(),
               });
 

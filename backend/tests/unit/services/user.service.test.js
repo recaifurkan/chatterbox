@@ -27,9 +27,12 @@ function makePresenceService() {
   };
 }
 
-function makeGetIO() {
-  const emit = jest.fn();
-  return () => ({ emit });
+function makeSocketService() {
+  return {
+    emit: jest.fn(),
+    emitToUser: jest.fn(),
+    emitToRoom: jest.fn(),
+  };
 }
 
 let userService;
@@ -45,7 +48,7 @@ beforeEach(() => {
   userService = new UserService({
     User,
     presenceService: makePresenceService(),
-    getIO: makeGetIO(),
+    socketService: makeSocketService(),
     filesystemService: makeFilesystemService(),
     mediaService: makeMediaService(),
   });
@@ -64,7 +67,7 @@ describe('UserService — uploadAvatar()', () => {
       processAvatar: jest.fn().mockRejectedValue(new Error('unsupported format')),
     });
     const svc = new UserService({
-      User, presenceService: makePresenceService(), getIO: makeGetIO(), filesystemService: fs, mediaService: media,
+      User, presenceService: makePresenceService(), socketService: makeSocketService(), filesystemService: fs, mediaService: media,
     });
     const user = await createUser();
     await expect(svc.uploadAvatar(user._id, Buffer.from('bad'))).rejects.toThrow('desteklenmiyor');
@@ -73,7 +76,7 @@ describe('UserService — uploadAvatar()', () => {
   it('skips old avatar deletion when user has no avatar', async () => {
     const fs = makeFilesystemService();
     const svc = new UserService({
-      User, presenceService: makePresenceService(), getIO: makeGetIO(), filesystemService: fs, mediaService: makeMediaService(),
+      User, presenceService: makePresenceService(), socketService: makeSocketService(), filesystemService: fs, mediaService: makeMediaService(),
     });
 
     // User starts with no avatarUrl
@@ -91,7 +94,7 @@ describe('UserService — uploadAvatar()', () => {
 
     const fs = makeFilesystemService({ extractObjectName: jest.fn().mockReturnValue('avatars/old.jpg') });
     const svc = new UserService({
-      User, presenceService: makePresenceService(), getIO: makeGetIO(), filesystemService: fs, mediaService: makeMediaService(),
+      User, presenceService: makePresenceService(), socketService: makeSocketService(), filesystemService: fs, mediaService: makeMediaService(),
     });
 
     await svc.uploadAvatar(user._id, Buffer.from('new-img'));
@@ -104,7 +107,7 @@ describe('UserService — uploadAvatar()', () => {
 
     const fs = makeFilesystemService({ extractObjectName: jest.fn().mockReturnValue(null) });
     const svc = new UserService({
-      User, presenceService: makePresenceService(), getIO: makeGetIO(), filesystemService: fs, mediaService: makeMediaService(),
+      User, presenceService: makePresenceService(), socketService: makeSocketService(), filesystemService: fs, mediaService: makeMediaService(),
     });
 
     await svc.uploadAvatar(user._id, Buffer.from('img'));

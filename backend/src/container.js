@@ -25,6 +25,7 @@ const PresenceService = require('./services/presence.service');
 const RedisService = require('./services/redis.service');
 const RoomService = require('./services/room.service');
 const SchedulerService = require('./services/scheduler.service');
+const SocketService = require('./services/socket.service');
 const UploadService = require('./services/upload.service');
 const UserService = require('./services/user.service');
 const LiveKitService = require('./services/livekit.service');
@@ -56,11 +57,14 @@ const auditService = new AuditService({ AuditLog });
 // Redis Service — tek bir redisService örneği tüm bağımlılıklara enjekte edilir
 const redisService = new RedisService({ getRedisClient });
 
+// Socket Service — tek bir socketService örneği tüm bağımlılıklara enjekte edilir
+const socketService = new SocketService({ getIO });
+
 const authService = new AuthService({ User, redisService });
 
 const presenceService = new PresenceService({ redisService });
 
-const notificationService = new NotificationService({ Notification, getIO });
+const notificationService = new NotificationService({ Notification, socketService });
 
 const messageService = new MessageService({ Message, Room, auditService });
 
@@ -77,12 +81,12 @@ const uploadService = new UploadService({ filesystemService, mediaService });
 const userService = new UserService({
   User,
   presenceService,
-  getIO,
+  socketService,
   filesystemService,
   mediaService,
 });
 
-const schedulerService = new SchedulerService({ Message, Room, redisService, getIO });
+const schedulerService = new SchedulerService({ Message, Room, redisService, socketService });
 
 const livekitService = new LiveKitService();
 
@@ -113,6 +117,7 @@ module.exports = {
   redisService,
   roomService,
   schedulerService,
+  socketService,
   uploadService,
   userService,
   // Middlewares

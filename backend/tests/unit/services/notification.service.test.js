@@ -3,16 +3,21 @@
  */
 const { connectDB, disconnectDB, clearDB, setTestEnv, createUser } = require('../../helpers/setup');
 
-// Mock socket.io
+// Mock socketService
 const mockEmit = jest.fn();
-const mockTo = jest.fn(() => ({ emit: mockEmit }));
+const mockEmitToUser = jest.fn();
+const mockSocketService = {
+  emit: mockEmit,
+  emitToUser: mockEmitToUser,
+  emitToRoom: jest.fn(),
+};
 
 const Notification = require('../../../src/models/Notification');
 const NotificationService = require('../../../src/services/notification.service');
 
 const notificationService = new NotificationService({
   Notification,
-  getIO: () => ({ to: mockTo }),
+  socketService: mockSocketService,
 });
 
 const createNotification = notificationService.createNotification.bind(notificationService);
@@ -60,8 +65,11 @@ describe('notification.service', () => {
         title: 'System alert',
         body: 'Test',
       });
-      expect(mockTo).toHaveBeenCalledWith(`user:${user._id}`);
-      expect(mockEmit).toHaveBeenCalledWith('new_notification', expect.any(Object));
+      expect(mockEmitToUser).toHaveBeenCalledWith(
+        user._id.toString(),
+        'new_notification',
+        expect.any(Object),
+      );
     });
   });
 

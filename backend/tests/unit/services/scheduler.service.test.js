@@ -7,7 +7,11 @@ const { connectDB, disconnectDB, clearDB, setTestEnv, createUser, createRoom, cr
 let mockRedisClient;
 
 const mockEmit = jest.fn();
-const mockGetIO = () => ({ to: jest.fn(() => ({ emit: mockEmit })) });
+const mockSocketService = {
+  emit: mockEmit,
+  emitToRoom: jest.fn(),
+  emitToUser: jest.fn(),
+};
 
 // Mock node-cron so we can capture and trigger the scheduled function manually
 let capturedCronCallback;
@@ -41,7 +45,7 @@ function createSchedulerService() {
     Message,
     Room,
     redisService: new RedisService({ getRedisClient: () => mockRedisClient }),
-    getIO: mockGetIO,
+    socketService: mockSocketService,
   });
 }
 
@@ -63,7 +67,7 @@ describe('scheduler.service - startScheduler', () => {
     await capturedCronCallback();
 
     // No messages should be processed (lock was held)
-    expect(mockEmit).not.toHaveBeenCalled();
+    expect(mockSocketService.emitToRoom).not.toHaveBeenCalled();
   });
 
   it('processes due scheduled messages and emits NEW_MESSAGE', async () => {
@@ -85,7 +89,7 @@ describe('scheduler.service - startScheduler', () => {
 
     const updated = await Message.findById(msg._id);
     expect(updated.isScheduled).toBe(false);
-    expect(mockEmit).toHaveBeenCalled();
+    expect(mockSocketService.emitToRoom).toHaveBeenCalled();
   });
 
   it('releases lock in finally block even on error', async () => {
@@ -126,7 +130,7 @@ describe('scheduler.service - startScheduler', () => {
 
     // Should not throw
     await capturedCronCallback();
-    expect(mockEmit).not.toHaveBeenCalled();
+    expect(mockSocketService.emitToRoom).not.toHaveBeenCalled();
   });
 });
 
