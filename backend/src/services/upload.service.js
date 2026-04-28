@@ -6,16 +6,12 @@ const logger = require('../utils/logger');
 class UploadService {
   /**
    * @param {{
-   *   uploadBuffer: Function,
-   *   minioClient: Object,
-   *   BUCKET: string,
+   *   filesystemService: import('./filesystem.service'),
    *   mediaService: import('./media.service')
    * }} deps
    */
-  constructor({ uploadBuffer, minioClient, BUCKET, mediaService }) {
-    this.uploadBuffer = uploadBuffer;
-    this.minioClient = minioClient;
-    this.BUCKET = BUCKET;
+  constructor({ filesystemService, mediaService }) {
+    this.filesystemService = filesystemService;
     this.mediaService = mediaService;
   }
 
@@ -62,7 +58,7 @@ class UploadService {
             : 'documents';
         const objectName = `${subDir}/${uuidv4()}${ext}`;
 
-        const url = await this.uploadBuffer(objectName, buffer, mimeType);
+        const url = await this.filesystemService.upload(objectName, buffer, mimeType);
 
         return {
           originalName: file.originalname,
@@ -77,14 +73,11 @@ class UploadService {
   }
 
   /**
-   * MinIO'daki dosyayı stream olarak döner.
+   * Depolama alanındaki dosyayı stream olarak döner.
    * @returns {{ stream, contentType, size }}
    */
   async getFileStream(objectName) {
-    const stat = await this.minioClient.statObject(this.BUCKET, objectName);
-    const contentType = stat.metaData?.['content-type'] || 'application/octet-stream';
-    const stream = await this.minioClient.getObject(this.BUCKET, objectName);
-    return { stream, contentType, size: stat.size };
+    return this.filesystemService.getStream(objectName);
   }
 }
 

@@ -13,22 +13,21 @@ jest.mock('../../src/config/redis', () => ({
   connectRedis: jest.fn().mockResolvedValue(undefined),
 }));
 
-// Mock MinIO
-const mockUploadBuffer = jest.fn().mockResolvedValue('/api/v1/files/images/test-uuid.jpg');
-const mockStatObject = jest.fn();
-const mockGetObject = jest.fn();
+// Mock MinIO Storage Provider
+const mockUpload = jest.fn().mockResolvedValue('/api/v1/files/images/test-uuid.jpg');
+const mockGetStream = jest.fn();
+const mockDelete = jest.fn().mockResolvedValue(undefined);
+const mockExtractObjectName = jest.fn().mockReturnValue(null);
 
-jest.mock('../../src/config/minio', () => ({
-  uploadBuffer: mockUploadBuffer,
-  deleteObject: jest.fn().mockResolvedValue(undefined),
-  extractObjectName: jest.fn().mockReturnValue(null),
-  ensureBucket: jest.fn().mockResolvedValue(undefined),
-  minioClient: {
-    statObject: mockStatObject,
-    getObject: mockGetObject,
-  },
-  BUCKET: 'chat-uploads',
-}));
+jest.mock('../../src/services/storage/minio.provider', () => {
+  return jest.fn().mockImplementation(() => ({
+    init: jest.fn().mockResolvedValue(undefined),
+    upload: mockUpload,
+    getStream: mockGetStream,
+    delete: mockDelete,
+    extractObjectName: mockExtractObjectName,
+  }));
+});
 
 jest.mock('../../src/config/socket', () => ({
   getIO: () => ({ emit: jest.fn(), to: jest.fn(() => ({ emit: jest.fn() })) }),
@@ -79,7 +78,7 @@ describe('POST /api/v1/upload', () => {
   it('uploads an image file successfully', async () => {
     const user = await createUser();
     const token = makeAccessToken(user._id);
-    mockUploadBuffer.mockResolvedValueOnce('/api/v1/files/images/test.jpg');
+    mockUpload.mockResolvedValueOnce('/api/v1/files/images/test.jpg');
 
     const res = await request(app)
       .post('/api/v1/upload')
@@ -94,7 +93,7 @@ describe('POST /api/v1/upload', () => {
   it('uploads a PDF document successfully', async () => {
     const user = await createUser();
     const token = makeAccessToken(user._id);
-    mockUploadBuffer.mockResolvedValueOnce('/api/v1/files/documents/test.pdf');
+    mockUpload.mockResolvedValueOnce('/api/v1/files/documents/test.pdf');
 
     const res = await request(app)
       .post('/api/v1/upload')
@@ -126,8 +125,8 @@ describe('GET /api/v1/files/*', () => {
     expect([400, 404]).toContain(res.status);
   });
 
-  it('returns 404 when object does not exist in MinIO', async () => {
-    mockStatObject.mockRejectedValueOnce(new Error('Not Found'));
+  it('returns 404 when object does not exist in storage', async () => {
+    mockGetStream.mockRejectedValueOnce(new Error('Not Found'));
 
     const res = await request(app).get('/api/v1/files/images/nonexistent.jpg');
     expect(res.status).toBe(404);
@@ -144,11 +143,11 @@ describe('GET /api/v1/files/*', () => {
       },
     });
 
-    mockStatObject.mockResolvedValueOnce({
+    mockGetStream.mockResolvedValueOnce({
+      stream: fakeStream,
+      contentType: 'image/jpeg',
       size: 12,
-      metaData: { 'content-type': 'image/jpeg' },
     });
-    mockGetObject.mockResolvedValueOnce(fakeStream);
 
     const res = await request(app).get('/api/v1/files/images/test.jpg').buffer(true);
     expect(res.status).toBe(200);

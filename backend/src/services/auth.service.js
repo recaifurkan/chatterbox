@@ -5,11 +5,11 @@ const { BadRequestError, UnauthorizedError, ConflictError } = require('../utils/
 
 class AuthService {
   /**
-   * @param {{ User: import('mongoose').Model, getRedisClient: () => import('ioredis').Redis }} deps
+   * @param {{ User: import('mongoose').Model, redisService: import('./redis.service') }} deps
    */
-  constructor({ User, getRedisClient }) {
+  constructor({ User, redisService }) {
     this.User = User;
-    this.getRedisClient = getRedisClient;
+    this.redisService = redisService;
   }
 
   // ── Token operations ────────────────────────────────────────────────────
@@ -31,9 +31,8 @@ class AuthService {
   }
 
   async storeRefreshToken(userId, token) {
-    const redis = this.getRedisClient();
     const ttl = 7 * 24 * 60 * 60;
-    await redis.setex(REDIS_KEYS.REFRESH_TOKEN(userId), ttl, token);
+    await this.redisService.setex(REDIS_KEYS.REFRESH_TOKEN(userId), ttl, token);
   }
 
   async verifyRefreshToken(token) {
@@ -41,19 +40,16 @@ class AuthService {
   }
 
   async revokeAccessToken(jti, expiresIn) {
-    const redis = this.getRedisClient();
     const ttl = expiresIn ?? 900;
-    await redis.setex(REDIS_KEYS.BLACKLISTED_TOKEN(jti), ttl, '1');
+    await this.redisService.setex(REDIS_KEYS.BLACKLISTED_TOKEN(jti), ttl, '1');
   }
 
   async revokeRefreshToken(userId) {
-    const redis = this.getRedisClient();
-    await redis.del(REDIS_KEYS.REFRESH_TOKEN(userId));
+    await this.redisService.del(REDIS_KEYS.REFRESH_TOKEN(userId));
   }
 
   async isRefreshTokenValid(userId, token) {
-    const redis = this.getRedisClient();
-    const stored = await redis.get(REDIS_KEYS.REFRESH_TOKEN(userId));
+    const stored = await this.redisService.get(REDIS_KEYS.REFRESH_TOKEN(userId));
     return stored === token;
   }
 

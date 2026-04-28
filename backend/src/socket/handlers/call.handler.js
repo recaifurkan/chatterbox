@@ -16,13 +16,13 @@ const logger = require('../../utils/logger');
  *  4. Either → CALL_END      → Server → temizle → diğer tarafa bildir
  */
 class CallHandler {
-  constructor({ getRedisClient, livekitService }) {
-    this.getRedisClient = getRedisClient;
+  constructor({ redisService, livekitService }) {
+    this.redisService = redisService;
     this.livekitService = livekitService;
   }
 
   register(io, socket) {
-    const redis = this.getRedisClient();
+    const redis = this.redisService;
     const livekit = this.livekitService;
 
     // ── Arama başlat ─────────────────────────────────────────────────────

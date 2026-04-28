@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const createUploadController = require('../controllers/upload.controller');
 const { uploadService } = require('../container');
-const { authenticate } = require('../middlewares/auth.middleware');
+const { authenticate } = require('../container');
 const { upload } = require('../middlewares/upload.middleware');
 const { uploadLimiter } = require('../middlewares/rateLimiter.middleware');
 

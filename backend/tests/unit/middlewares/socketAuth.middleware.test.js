@@ -5,16 +5,18 @@ const jwt = require('jsonwebtoken');
 const { setTestEnv, connectDB, disconnectDB, clearDB, createUser } = require('../../helpers/setup');
 
 let mockRedisClient;
-jest.mock('../../../src/config/redis', () => ({
-  getRedisClient: () => mockRedisClient,
-}));
-
-const { socketAuthMiddleware } = require('../../../src/middlewares/socketAuth.middleware');
+let socketAuthMiddleware;
 
 beforeAll(async () => {
   setTestEnv();
   const RedisMock = require('ioredis-mock');
   mockRedisClient = new RedisMock();
+
+  const RedisService = require('../../../src/services/redis.service');
+  const createSocketAuthMiddleware = require('../../../src/middlewares/socketAuth.middleware');
+  const redisService = new RedisService({ getRedisClient: () => mockRedisClient });
+  socketAuthMiddleware = createSocketAuthMiddleware({ redisService });
+
   await connectDB();
 });
 

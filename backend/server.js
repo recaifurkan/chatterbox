@@ -4,9 +4,10 @@ const app = require('./src/app');
 const { connectDB } = require('./src/config/database');
 const { connectRedis } = require('./src/config/redis');
 const { initializeSocket } = require('./src/config/socket');
-const { initMinIO } = require('./src/config/minio');
 const {
+  filesystemService,
   schedulerService,
+  socketAuthMiddleware,
   chatHandler, dmHandler, presenceHandler,
   reactionHandler, readReceiptHandler, typingHandler,
   callHandler,
@@ -21,10 +22,11 @@ async function startServer() {
     logger.info(`🔧 Instance: ${INSTANCE_ID}`);
     await connectDB();
     await connectRedis();
-    await initMinIO();
+    await filesystemService.init();
 
     const server = http.createServer(app);
     initializeSocket(server, {
+      socketAuthMiddleware,
       chatHandler, dmHandler, presenceHandler,
       reactionHandler, readReceiptHandler, typingHandler,
       callHandler,

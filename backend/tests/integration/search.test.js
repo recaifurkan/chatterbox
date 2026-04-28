@@ -12,9 +12,15 @@ jest.mock('../../src/config/redis', () => ({
   getRedisClient: () => mockRedisInstance,
   connectRedis: jest.fn().mockResolvedValue(undefined),
 }));
-jest.mock('../../src/config/minio', () => ({
-  ensureBucket: jest.fn().mockResolvedValue(undefined),
-}));
+jest.mock('../../src/services/storage/minio.provider', () => {
+  return jest.fn().mockImplementation(() => ({
+    init: jest.fn().mockResolvedValue(undefined),
+    upload: jest.fn().mockResolvedValue('/api/v1/files/test/file.jpg'),
+    getStream: jest.fn().mockResolvedValue({ stream: null, contentType: 'application/octet-stream', size: 0 }),
+    delete: jest.fn().mockResolvedValue(undefined),
+    extractObjectName: jest.fn().mockReturnValue(null),
+  }));
+});
 jest.mock('../../src/config/socket', () => ({
   getIO: () => ({ emit: jest.fn(), to: jest.fn(() => ({ emit: jest.fn() })) }),
   initSocket: jest.fn(),

@@ -34,12 +34,13 @@ afterEach(async () => {
 const Message = require('../../../src/models/Message');
 const Room = require('../../../src/models/Room');
 const SchedulerService = require('../../../src/services/scheduler.service');
+const RedisService = require('../../../src/services/redis.service');
 
 function createSchedulerService() {
   return new SchedulerService({
     Message,
     Room,
-    getRedisClient: () => mockRedisClient,
+    redisService: new RedisService({ getRedisClient: () => mockRedisClient }),
     getIO: mockGetIO,
   });
 }

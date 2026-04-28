@@ -13,9 +13,10 @@ beforeAll(() => {
 });
 
 const AuthService = require('../../../src/services/auth.service');
+const RedisService = require('../../../src/services/redis.service');
 const authService = new AuthService({
   User: null, // not needed for token-only tests
-  getRedisClient: () => mockRedisClient,
+  redisService: new RedisService({ getRedisClient: () => mockRedisClient }),
 });
 
 const signAccessToken = authService.signAccessToken.bind(authService);

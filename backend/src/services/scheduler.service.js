@@ -7,10 +7,10 @@ const LOCK_KEY = 'scheduler:lock';
 const LOCK_TTL = 55;
 
 class SchedulerService {
-  constructor({ Message, Room, getRedisClient, getIO }) {
+  constructor({ Message, Room, redisService, getIO }) {
     this.Message = Message;
     this.Room = Room;
-    this.getRedisClient = getRedisClient;
+    this.redisService = redisService;
     this.getIO = getIO;
   }
 
@@ -70,9 +70,7 @@ class SchedulerService {
 
   startScheduler() {
     cron.schedule('* * * * *', async () => {
-      const redis = this.getRedisClient();
-
-      const acquired = await redis.set(LOCK_KEY, '1', 'EX', LOCK_TTL, 'NX');
+      const acquired = await this.redisService.set(LOCK_KEY, '1', 'EX', LOCK_TTL, 'NX');
       if (!acquired) return;
 
       try {
@@ -111,7 +109,7 @@ class SchedulerService {
       } catch (error) {
         logger.error('Scheduler error:', error);
       } finally {
-        await redis.del(LOCK_KEY);
+        await this.redisService.del(LOCK_KEY);
       }
     });
 

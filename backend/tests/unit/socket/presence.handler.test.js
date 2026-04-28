@@ -42,11 +42,12 @@ afterEach(async () => {
 });
 
 const PresenceHandler = require('../../../src/socket/handlers/presence.handler');
+const RedisService = require('../../../src/services/redis.service');
 const { SOCKET_EVENTS, USER_STATUS } = require('../../../src/utils/constants');
 
 const presenceHandler = new PresenceHandler({
   presenceService: mockPresenceService,
-  getRedisClient: () => mockRedisClient,
+  redisService: new RedisService({ getRedisClient: () => mockRedisClient }),
 });
 
 const { setUserOnline, setUserOffline, setUserStatus } = mockPresenceService;

@@ -8,19 +8,15 @@ class UserService {
    *   User: import('mongoose').Model,
    *   presenceService: import('./presence.service'),
    *   getIO: () => import('socket.io').Server,
-   *   uploadBuffer: Function,
-   *   deleteObject: Function,
-   *   extractObjectName: Function,
+   *   filesystemService: import('./filesystem.service'),
    *   mediaService: import('./media.service')
    * }} deps
    */
-  constructor({ User, presenceService, getIO, uploadBuffer, deleteObject, extractObjectName, mediaService }) {
+  constructor({ User, presenceService, getIO, filesystemService, mediaService }) {
     this.User = User;
     this.presenceService = presenceService;
     this.getIO = getIO;
-    this.uploadBuffer = uploadBuffer;
-    this.deleteObject = deleteObject;
-    this.extractObjectName = extractObjectName;
+    this.filesystemService = filesystemService;
     this.mediaService = mediaService;
   }
 
@@ -64,12 +60,12 @@ class UserService {
     // Eski avatarı sil
     const oldUser = await this.User.findById(userId);
     if (oldUser.avatarUrl) {
-      const oldObjectName = this.extractObjectName(oldUser.avatarUrl);
-      if (oldObjectName) await this.deleteObject(oldObjectName);
+      const oldObjectName = this.filesystemService.extractObjectName(oldUser.avatarUrl);
+      if (oldObjectName) await this.filesystemService.delete(oldObjectName);
     }
 
     const objectName = `avatars/${userId}_${uuidv4()}.jpg`;
-    const avatarUrl = await this.uploadBuffer(objectName, jpegBuffer, 'image/jpeg');
+    const avatarUrl = await this.filesystemService.upload(objectName, jpegBuffer, 'image/jpeg');
 
     const user = await this.User.findByIdAndUpdate(userId, { avatarUrl }, { new: true });
     return { avatarUrl: user.avatarUrl };

@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const createRoomController = require('../controllers/room.controller');
 const { roomService } = require('../container');
-const { authenticate } = require('../middlewares/auth.middleware');
+const { authenticate } = require('../container');
 
 const {
   getRooms, getMyRooms, getRoom, createRoom, joinRoom,

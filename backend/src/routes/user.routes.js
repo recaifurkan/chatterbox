@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const createUserController = require('../controllers/user.controller');
 const { userService } = require('../container');
-const { authenticate } = require('../middlewares/auth.middleware');
+const { authenticate } = require('../container');
 const { avatarUpload } = require('../middlewares/upload.middleware');
 
 const {

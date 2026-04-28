@@ -1,17 +1,16 @@
 const { Server } = require('socket.io');
 const { createAdapter } = require('@socket.io/redis-adapter');
 const { getRedisPubSub } = require('./redis');
-const { socketAuthMiddleware } = require('../middlewares/socketAuth.middleware');
 const logger = require('../utils/logger');
 
 let io = null;
 
 /**
  * @param {import('http').Server} server
- * @param {{ chatHandler, dmHandler, presenceHandler, reactionHandler, readReceiptHandler, typingHandler, callHandler }} handlers
+ * @param {{ socketAuthMiddleware: Function, chatHandler, dmHandler, presenceHandler, reactionHandler, readReceiptHandler, typingHandler, callHandler }} handlers
  */
 function initializeSocket(server, handlers) {
-  const { chatHandler, dmHandler, presenceHandler, reactionHandler, readReceiptHandler, typingHandler, callHandler } = handlers;
+  const { socketAuthMiddleware, chatHandler, dmHandler, presenceHandler, reactionHandler, readReceiptHandler, typingHandler, callHandler } = handlers;
   io = new Server(server, {
     cors: {
       origin: process.env.CLIENT_URL || 'http://localhost:3000',

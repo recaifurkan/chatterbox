@@ -4,25 +4,20 @@
 const jwt = require('jsonwebtoken');
 const { setTestEnv, connectDB, disconnectDB, clearDB, createUser } = require('../../helpers/setup');
 
-// Jest requires mock variables to be prefixed with 'mock'
-let mockRedisInstance;
-jest.mock('../../../src/config/redis', () => ({
-  getRedisClient: () => mockRedisInstance,
-}));
-
-const { authenticate, authorize } = require('../../../src/middlewares/auth.middleware');
-
-function mockRes() {
-  const res = {};
-  res.status = jest.fn().mockReturnValue(res);
-  res.json = jest.fn().mockReturnValue(res);
-  return res;
-}
+let mockRedisClient;
+let authenticate;
+let authorize;
 
 beforeAll(async () => {
   setTestEnv();
   const RedisMock = require('ioredis-mock');
-  mockRedisInstance = new RedisMock();
+  mockRedisClient = new RedisMock();
+
+  const RedisService = require('../../../src/services/redis.service');
+  const createAuthMiddleware = require('../../../src/middlewares/auth.middleware');
+  const redisService = new RedisService({ getRedisClient: () => mockRedisClient });
+  ({ authenticate, authorize } = createAuthMiddleware({ redisService }));
+
   await connectDB();
 });
 
@@ -32,7 +27,7 @@ afterAll(async () => {
 
 afterEach(async () => {
   await clearDB();
-  await mockRedisInstance.flushall();
+  await mockRedisClient.flushall();
 });
 
 describe('auth.middleware - authenticate', () => {
@@ -75,7 +70,7 @@ describe('auth.middleware - authenticate', () => {
     const user = await createUser();
     const jti = 'blacklisted-jti';
     const token = jwt.sign({ userId: user._id.toString(), jti }, process.env.JWT_SECRET, { expiresIn: '15m' });
-    await mockRedisInstance.setex(`blacklist:${jti}`, 900, '1');
+    await mockRedisClient.setex(`blacklist:${jti}`, 900, '1');
     const req = { headers: { authorization: `Bearer ${token}` } };
     const res = mockRes();
     const next = jest.fn();
@@ -142,3 +137,9 @@ describe('auth.middleware - authorize', () => {
   });
 });
 
+function mockRes() {
+  const res = {};
+  res.status = jest.fn().mockReturnValue(res);
+  res.json = jest.fn().mockReturnValue(res);
+  return res;
+}

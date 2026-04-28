@@ -13,10 +13,13 @@ jest.mock('../../../src/config/socket', () => ({
   getIO: jest.fn(),
   initializeSocket: jest.fn(),
 }));
-jest.mock('../../../src/config/minio', () => ({
-  uploadBuffer: jest.fn(), deleteObject: jest.fn(), extractObjectName: jest.fn(),
-  minioClient: {}, BUCKET: 'test', ensureBucket: jest.fn().mockResolvedValue(undefined),
-}));
+jest.mock('../../../src/services/storage/minio.provider', () => {
+  return jest.fn().mockImplementation(() => ({
+    init: jest.fn().mockResolvedValue(undefined),
+    upload: jest.fn(), delete: jest.fn(), extractObjectName: jest.fn(),
+    getStream: jest.fn(),
+  }));
+});
 
 // Real messageService from container (backed by real DB, mocked infra)
 const { messageService } = require('../../../src/container');

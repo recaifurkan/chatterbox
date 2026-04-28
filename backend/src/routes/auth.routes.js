@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const createAuthController = require('../controllers/auth.controller');
 const { authService } = require('../container');
-const { authenticate } = require('../middlewares/auth.middleware');
+const { authenticate } = require('../container');
 const { authLimiter } = require('../middlewares/rateLimiter.middleware');
 
 const { register, login, logout, refreshToken, getMe } = createAuthController(authService);

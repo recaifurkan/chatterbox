@@ -6,6 +6,7 @@ const { setTestEnv, createUser, connectDB, disconnectDB, clearDB } = require('..
 let mockRedisClient;
 
 const PresenceService = require('../../../src/services/presence.service');
+const RedisService = require('../../../src/services/redis.service');
 
 function buildSocket(user) {
   const handlers = {};
@@ -40,7 +41,7 @@ afterEach(async () => {
 const TypingHandler = require('../../../src/socket/handlers/typing.handler');
 const { SOCKET_EVENTS } = require('../../../src/utils/constants');
 
-const presenceService = new PresenceService({ getRedisClient: () => mockRedisClient });
+const presenceService = new PresenceService({ redisService: new RedisService({ getRedisClient: () => mockRedisClient }) });
 const typingHandler = new TypingHandler({ presenceService });
 
 describe('typing.handler', () => {

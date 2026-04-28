@@ -16,7 +16,8 @@ beforeEach(async () => {
 });
 
 const PresenceService = require('../../../src/services/presence.service');
-const presenceService = new PresenceService({ getRedisClient: () => mockRedisClient });
+const RedisService = require('../../../src/services/redis.service');
+const presenceService = new PresenceService({ redisService: new RedisService({ getRedisClient: () => mockRedisClient }) });
 
 const setUserOnline = presenceService.setUserOnline.bind(presenceService);
 const setUserOffline = presenceService.setUserOffline.bind(presenceService);

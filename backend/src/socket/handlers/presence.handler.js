@@ -4,14 +4,14 @@ const { SOCKET_EVENTS, USER_STATUS, REDIS_KEYS, USER_KEY, ROOM_KEY } = require('
 const logger = require('../../utils/logger');
 
 class PresenceHandler {
-  constructor({ presenceService, getRedisClient }) {
+  constructor({ presenceService, redisService }) {
     this.presenceService = presenceService;
-    this.getRedisClient = getRedisClient;
+    this.redisService = redisService;
   }
 
   register(io, socket) {
     const { presenceService } = this;
-    const redis = this.getRedisClient();
+    const redis = this.redisService;
 
     socket.join(USER_KEY(socket.userId));
 
